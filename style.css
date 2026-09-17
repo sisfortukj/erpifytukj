@@ -468,3 +468,9 @@ body{font-family:'Inter',sans-serif;color:var(--gray-800);background:var(--white
 .sertif-row .form-group:last-child{margin-bottom:0}
 .sertif-row-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media(max-width:640px){.sertif-row-grid{grid-template-columns:1fr}}
+
+/* ===== TABEL SERTIFIKASI: BARIS LANJUTAN (mahasiswa sama) ===== */
+.admin-table tr.baris-lanjutan td{background:rgba(32,122,224,0.045)}
+.admin-table tr.baris-lanjutan td:nth-child(1),
+.admin-table tr.baris-lanjutan td:nth-child(2){color:var(--gray-400)}
+.lanjutan-tanda{font-size:0.8125rem;color:var(--gray-400);white-space:nowrap}

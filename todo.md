@@ -69,6 +69,12 @@ ditambah Bagian 6 (backend dinamis untuk hosting Hostinger).
 - [x] 8.6 Halaman cek sertifikat: cukup masukkan NIM, semua sertifikat tampil rapi sebagai kartu dengan tombol Lihat & Unduh
 - [x] 8.7 Import/Export/Template CSV & Excel memakai NIM sebagai kolom pertama (format lama 9 kolom tetap didukung)
 
+## Bagian 9: Perbaikan Import/Export & Pengelompokan Tabel
+- [x] 9.1 Template & Export Excel memakai file **.xlsx asli** (SheetJS) sehingga tidak ada peringatan format saat dibuka di Excel; ada cadangan CSV bila pustaka belum termuat
+- [x] 9.2 Import tetap mendukung .xlsx/.xls/.csv format baru (NIM kolom pertama) maupun format lama 9 kolom
+- [x] 9.3 Tabel Sertifikasi admin diurutkan per **NIM** sehingga sertifikat baru langsung muncul tepat di bawah mahasiswa yang sama
+- [x] 9.4 Baris lanjutan (mahasiswa sama) diberi penanda `↳` + warna latar berbeda agar mudah terlihat
+
 ## Catatan Teknis
 - Foto & PDF sertifikat disimpan sebagai URL file di server (folder `uploads/`), bukan lagi data URL di localStorage.
 - Bila `api/config.php` belum diisi, website otomatis jalan dalam mode statis (localStorage) - tidak error.

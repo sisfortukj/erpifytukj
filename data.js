@@ -1691,6 +1691,16 @@ function renderAdminSertifikasi() {
     if (filterDiambil) filtered = filtered.filter(s => (s.diambil || 'Belum Diambil') === filterDiambil);
     if (filterAngkatan) filtered = filtered.filter(s => s.angkatan === filterAngkatan);
 
+    // Urutkan berdasarkan NIM supaya sertifikat milik mahasiswa yang sama
+    // tampil berurutan - sertifikat baru langsung muncul di bawah mahasiswa tersebut.
+    filtered = filtered.slice().sort(function(a, b) {
+        const ka = normalizeNim(a.nim);
+        const kb = normalizeNim(b.nim);
+        if (ka < kb) return -1;
+        if (ka > kb) return 1;
+        return String(a.jenis || '').localeCompare(String(b.jenis || ''));
+    });
+
     const jumlahMahasiswa = [...new Set(filtered.map(s => normalizeNim(s.nim)))].length;
 
     container.innerHTML = '<div class="table-actions">'
@@ -1727,11 +1737,14 @@ function renderAdminSertifikasi() {
         + '<th>NIM</th><th>Nama Mahasiswa</th><th>Angkatan</th><th>Kelas</th><th>Nama Sertifikat</th><th>Nilai</th>'
         + '<th>Status Kelayakan</th><th>Status Pengambilan</th><th>PDF</th><th>Aksi</th>'
         + '</tr></thead><tbody>'
-        + filtered.map(function(s) {
+        + filtered.map(function(s, i) {
             const idx = semua.indexOf(s);
             const pdfUrl = getSertifikatPdfUrl(s);
-            return '<tr>'
-                + '<td><strong>' + escapeHtml(s.nim || '-') + '</strong></td>'
+            const lanjutan = (i > 0 && normalizeNim(filtered[i - 1].nim) === normalizeNim(s.nim));
+            return '<tr class="' + (lanjutan ? 'baris-lanjutan' : '') + '">'
+                + '<td>' + (lanjutan
+                    ? '<span class="lanjutan-tanda">&#8627; ' + escapeHtml(s.nim || '') + '</span>'
+                    : '<strong>' + escapeHtml(s.nim || '-') + '</strong>') + '</td>'
                 + '<td>' + escapeHtml(s.nama || '-') + '</td>'
                 + '<td>' + escapeHtml(s.angkatan || '-') + '</td>'
                 + '<td>' + escapeHtml(s.kelas || '-') + '</td>'
@@ -1949,57 +1962,65 @@ function downloadTemplateSertifikat() {
         ['2203002','Contoh Mahasiswa 2','2023','B','SAP FI Associate','A-','Belum Bisa Diambil','Belum Diambil']
     ];
 
-    // Buat HTML table untuk Excel (.xls)
-    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Template Sertifikat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
-    html += '<tr>' + headers.map(h => '<th style="background:#0a1628;color:white;padding:8px;font-weight:bold;border:1px solid #333;">'+h+'</th>').join('') + '</tr>';
-    contoh.forEach(r => {
-        html += '<tr>' + r.map(v => '<td style="padding:6px;border:1px solid #ddd;">'+v+'</td>').join('') + '</tr>';
+    // Utamakan file Excel asli (.xlsx) supaya tidak ada peringatan format saat dibuka
+    if (typeof XLSX !== 'undefined' && XLSX.utils && XLSX.writeFile) {
+        const aoa = [headers].concat(contoh);
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = headers.map(function(h, i) { return { wch: i === 4 ? 32 : 18 }; });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template Sertifikat');
+        XLSX.writeFile(wb, 'template_import_sertifikat_ERPify.xlsx');
+        erpifyToast('Template Excel (.xlsx) berhasil diunduh.', 'success');
+        return;
+    }
+
+    // Cadangan bila pustaka Excel belum termuat: unduh CSV (aman dibuka di Excel)
+    unduhCSV(headers, contoh, 'template_import_sertifikat_ERPify.csv');
+    erpifyToast('Template CSV berhasil diunduh (pustaka Excel belum siap).', 'success');
+}
+
+// Unduh data sebagai CSV (dipakai juga sebagai cadangan template)
+function unduhCSV(headers, rows, namaFile) {
+    let csv = headers.join(',') + '\n';
+    rows.forEach(function(r) {
+        csv += r.map(function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(',') + '\n';
     });
-    html += '</table></body></html>';
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'template_import_sertifikat_ERPify.xls';
+    a.href = url;
+    a.download = namaFile;
     a.click();
     URL.revokeObjectURL(url);
 }
-
-
 function exportSertifikatCSV() {
     const data = getData();
     const headers = ['NIM','Nama Mahasiswa','Angkatan','Kelas','Nama Sertifikat','Nilai','Status Kelayakan','Status Pengambilan'];
-    const rows = data.sertifikatSAP.map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
-
-    let csv = headers.join(',') + '\n';
-    rows.forEach(r => { csv += r.map(v => '"'+v+'"').join(',') + '\n'; });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'data_sertifikat_ERPify.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const rows = (data.sertifikatSAP || []).map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
+    unduhCSV(headers, rows, 'data_sertifikat_ERPify.csv');
+    erpifyToast('Data sertifikasi diekspor ke CSV.', 'success');
 }
 
 function exportSertifikatExcel() {
     const data = getData();
     const headers = ['NIM','Nama Mahasiswa','Angkatan','Kelas','Nama Sertifikat','Nilai','Status Kelayakan','Status Pengambilan'];
-    const rows = data.sertifikatSAP.map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
+    const rows = (data.sertifikatSAP || []).map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
 
-    
-    // Buat HTML table untuk Excel
-    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Data Sertifikat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
-    html += '<tr>' + headers.map(h => '<th style="background:#0a1628;color:white;padding:8px;font-weight:bold;">'+h+'</th>').join('') + '</tr>';
-    rows.forEach(r => {
-        html += '<tr>' + r.map(v => '<td style="padding:6px;border:1px solid #ddd;">'+v+'</td>').join('') + '</tr>';
-    });
-    html += '</table></body></html>';
-    
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'data_sertifikat_ERPify.xls';
-    a.click();
-    URL.revokeObjectURL(url);
+    // File Excel asli (.xlsx) memakai pustaka SheetJS yang sudah dimuat di halaman admin
+    if (typeof XLSX !== 'undefined' && XLSX.utils && XLSX.writeFile) {
+        const aoa = [headers].concat(rows);
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = headers.map(function(h, i) { return { wch: i === 4 ? 32 : 18 }; });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data Sertifikasi');
+        XLSX.writeFile(wb, 'data_sertifikat_ERPify.xlsx');
+        erpifyToast('Data sertifikasi diekspor ke Excel (.xlsx).', 'success');
+        return;
+    }
+
+    // Cadangan bila pustaka Excel tidak tersedia
+    unduhCSV(headers, rows, 'data_sertifikat_ERPify.csv');
+    erpifyToast('Pustaka Excel tidak tersedia - data diekspor sebagai CSV.', 'success');
 }
 
 function showImportModal() {
