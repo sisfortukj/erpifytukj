@@ -75,6 +75,12 @@ ditambah Bagian 6 (backend dinamis untuk hosting Hostinger).
 - [x] 9.3 Tabel Sertifikasi admin diurutkan per **NIM** sehingga sertifikat baru langsung muncul tepat di bawah mahasiswa yang sama
 - [x] 9.4 Baris lanjutan (mahasiswa sama) diberi penanda `↳` + warna latar berbeda agar mudah terlihat
 
+## Bagian 10: Perbaikan Form Sertifikasi (penomoran & daftar lengkap)
+- [x] 10.1 Nomor baris form mengikuti sertifikat ke-berapa (`Sertifikat #1`, `#2`, `#3`, ...) dan otomatis dirapikan saat baris dihapus
+- [x] 10.2 Membuka data mahasiswa menampilkan **SEMUA** sertifikatnya di form (bukan satu) + satu baris kosong untuk menambah sertifikat baru
+- [x] 10.3 Mengetik NIM yang sudah terdaftar otomatis memuat seluruh sertifikat mahasiswa tersebut ke form
+- [x] 10.4 Simpan: baris yang sudah ada **diperbarui** (via index baris), baris baru **ditambahkan**, baris yang dibuang dari form **dihapus** (dengan konfirmasi)
+
 ## Catatan Teknis
 - Foto & PDF sertifikat disimpan sebagai URL file di server (folder `uploads/`), bukan lagi data URL di localStorage.
 - Bila `api/config.php` belum diisi, website otomatis jalan dalam mode statis (localStorage) - tidak error.

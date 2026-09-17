@@ -1784,12 +1784,14 @@ function resetFilterSertifikat() {
     renderAdminSertifikasi();
 }
 
-// Nomor urut baris sertifikat pada form (untuk label "Sertifikat #n")
-let barisSertifKe = 0;
+// ===== FORM SERTIFIKASI (multi sertifikat per mahasiswa) =====
+let nimTermuatBaris = '';   // NIM yang baris sertifikatnya sedang ditampilkan di form
+let barisDihapus = [];      // daftar index data yang dibuang lewat form
 
 // Buka form sertifikasi.
-//   - index : index data yang mau diedit (kosongkan untuk data baru)
-// Form ini bisa memuat BEBERAPA sertifikat sekaligus untuk satu mahasiswa.
+//   - index : index data yang mau diedit (boleh kosong untuk data baru)
+// Form menampilkan SEMUA sertifikat milik mahasiswa tersebut + satu baris
+// kosong untuk menambah sertifikat baru.
 function showModalSertifikasi(index) {
     const data = getData();
     const punyaIndex = (index !== undefined && index !== null && index !== '' && index >= 0);
@@ -1802,26 +1804,51 @@ function showModalSertifikasi(index) {
     document.getElementById('srAngkatan').value = s ? (s.angkatan || '') : '';
     document.getElementById('srKelas').value = s ? (s.kelas || '') : '';
 
-    const kontainer = document.getElementById('sertifRows');
-    if (kontainer) kontainer.innerHTML = '';
-    barisSertifKe = 0;
-    tambahBarisSertifikat(s || null);
-
+    barisDihapus = [];
+    nimTermuatBaris = '';
+    kosongkanBarisSertifikat();
+    if (s && s.nim) {
+        muatBarisSertifikat(s.nim);
+    } else {
+        tambahBarisSertifikat();
+    }
     openModal('modalSertifikasi');
 }
 
-// Tambah satu baris sertifikat pada form (bisa dipanggil berkali-kali)
-function tambahBarisSertifikat(d) {
+function kosongkanBarisSertifikat() {
+    const kontainer = document.getElementById('sertifRows');
+    if (kontainer) kontainer.innerHTML = '';
+}
+
+// Tampilkan semua sertifikat milik satu NIM sebagai baris form,
+// lalu tambahkan satu baris kosong di bawahnya untuk sertifikat berikutnya.
+function muatBarisSertifikat(nim) {
+    const data = getData();
+    const kunci = normalizeNim(nim);
+    if (!kunci) return;
+    if (nimTermuatBaris === kunci) return;   // sudah tampil, jangan timpa isian admin
+    nimTermuatBaris = kunci;
+
+    kosongkanBarisSertifikat();
+    (data.sertifikatSAP || []).forEach(function(s, i) {
+        if (normalizeNim(s.nim) === kunci) tambahBarisSertifikat(s, i);
+    });
+    tambahBarisSertifikat();   // baris kosong: sertifikat berikutnya
+}
+
+// Tambah satu baris. d = data pengisian, dataIndex = index record asli (mode edit)
+function tambahBarisSertifikat(d, dataIndex) {
     const kontainer = document.getElementById('sertifRows');
     if (!kontainer) return;
-    barisSertifKe++;
+    const nomor = kontainer.querySelectorAll('.sertif-row').length + 1;
 
     const row = document.createElement('div');
     row.className = 'sertif-row';
     row.innerHTML = '<div class="sertif-row-head">'
-        + '<strong><i class="fas fa-certificate"></i> Sertifikat #' + barisSertifKe + '</strong>'
-        + '<button type="button" class="btn btn-sm btn-danger" onclick="hapusBarisSertifikat(this)" title="Hapus baris ini"><i class="fas fa-times"></i></button>'
+        + '<strong><i class="fas fa-certificate"></i> Sertifikat #<span class="row-nomor">' + nomor + '</span></strong>'
+        + '<button type="button" class="btn btn-sm btn-danger" onclick="hapusBarisSertifikat(this)" title="Hapus sertifikat ini"><i class="fas fa-times"></i></button>'
         + '</div>'
+        + '<input type="hidden" class="row-index" value="' + (dataIndex !== undefined && dataIndex !== null && dataIndex !== '' ? dataIndex : '') + '">'
         + '<div class="form-group"><label>Nama Sertifikat <span style="color:red;">*</span></label>'
         + '<input type="text" class="row-jenis" placeholder="Contoh: SAP S/4HANA Associate / SAP MM Associate" value="' + (d ? escapeHtml(d.jenis || '') : '') + '"></div>'
         + '<div class="sertif-row-grid">'
@@ -1844,18 +1871,34 @@ function tambahBarisSertifikat(d) {
         + '</div>';
 
     kontainer.appendChild(row);
+    perbaruiNomorBaris();
 }
 
-// Hapus satu baris sertifikat (minimal harus ada satu baris)
+// Nomor baris selalu urut 1..n sesuai posisinya di form
+function perbaruiNomorBaris() {
+    const kontainer = document.getElementById('sertifRows');
+    if (!kontainer) return;
+    kontainer.querySelectorAll('.sertif-row').forEach(function(row, i) {
+        const el = row.querySelector('.row-nomor');
+        if (el) el.textContent = String(i + 1);
+    });
+}
+
+// Buang satu baris dari form (minimal harus tersisa satu baris)
 function hapusBarisSertifikat(btn) {
-    const row = btn.closest ? btn.closest('.sertif-row') : btn.parentElement.parentElement;
+    const row = btn.closest ? btn.closest('.sertif-row') : null;
     const kontainer = document.getElementById('sertifRows');
     if (!row || !kontainer) return;
     if (kontainer.querySelectorAll('.sertif-row').length <= 1) {
-        alert('Minimal harus ada satu sertifikat pada form ini.');
+        alert('Minimal harus ada satu baris sertifikat.');
         return;
     }
+    const elIndex = row.querySelector('.row-index');
+    if (elIndex && String(elIndex.value).trim() !== '') {
+        barisDihapus.push(parseInt(elIndex.value, 10));
+    }
     row.remove();
+    perbaruiNomorBaris();
 }
 
 // Kumpulkan data dari semua baris sertifikat pada form
@@ -1869,7 +1912,9 @@ function bacaBarisSertifikat() {
         const elStatus = b.querySelector('.row-status');
         const elDiambil = b.querySelector('.row-diambil');
         const elPdf = b.querySelector('.row-pdf');
+        const elIndex = b.querySelector('.row-index');
         hasil.push({
+            dataIndex: elIndex ? String(elIndex.value).trim() : '',
             jenis: elJenis ? String(elJenis.value).trim() : '',
             nilai: elNilai ? String(elNilai.value).trim() : '',
             status: elStatus ? elStatus.value : 'Belum Bisa Diambil',
@@ -1880,7 +1925,7 @@ function bacaBarisSertifikat() {
     return hasil;
 }
 
-// Isi otomatis identitas mahasiswa bila NIM sudah pernah terdaftar
+// Isi otomatis identitas mahasiswa + tampilkan seluruh sertifikatnya di form
 function autofillIdentitasMahasiswa() {
     const elNim = document.getElementById('srNim');
     const elNama = document.getElementById('srNama');
@@ -1889,19 +1934,24 @@ function autofillIdentitasMahasiswa() {
     if (!elNim) return;
     const nim = String(elNim.value).trim();
     if (!nim) return;
+
     const data = getData();
     const sama = (data.sertifikatSAP || []).find(function(x) { return normalizeNim(x.nim) === normalizeNim(nim); });
-    if (!sama) return;
+    if (!sama) return;   // NIM baru: biarkan isian yang sedang diketik
+
     if (elNama && !String(elNama.value).trim()) elNama.value = sama.nama || '';
     if (elAngkatan && !String(elAngkatan.value).trim()) elAngkatan.value = sama.angkatan || '';
     if (elKelas && !String(elKelas.value).trim()) elKelas.value = sama.kelas || '';
+
+    muatBarisSertifikat(nim);
 }
 
 // Simpan sertifikasi. NIM + Nama Mahasiswa diisi sekali, lalu satu atau
 // beberapa sertifikat sekaligus (nama, nilai, status, status pengambilan, PDF).
+// Simpan sertifikasi: memperbarui baris yang sudah ada, menambah yang baru,
+// dan menghapus baris yang Anda buang dari form.
 function saveSertifikasi() {
     const data = getData();
-    const index = document.getElementById('srIndex').value;
     const nim = document.getElementById('srNim').value.trim();
     const nama = document.getElementById('srNama').value.trim();
     const angkatan = document.getElementById('srAngkatan').value.trim();
@@ -1913,35 +1963,44 @@ function saveSertifikasi() {
     const baris = bacaBarisSertifikat().filter(function(b) { return b.jenis !== ''; });
     if (baris.length === 0) { alert('Isi minimal satu Nama Sertifikat.'); return; }
 
+    if (barisDihapus.length > 0) {
+        if (!confirm('Ada ' + barisDihapus.length + ' sertifikat yang Anda hapus dari daftar form. Simpan perubahan termasuk penghapusan tersebut?')) return;
+    }
+
     if (!Array.isArray(data.sertifikatSAP)) data.sertifikatSAP = [];
 
-    const buatRecord = function(b) {
-        return {
+    let ditambah = 0;
+    let diubah = 0;
+
+    baris.forEach(function(b) {
+        const rec = {
             nim: nim, nama: nama, angkatan: angkatan, kelas: kelas,
             jenis: b.jenis, nilai: b.nilai, status: b.status, diambil: b.diambil, pdf: b.pdf
         };
-    };
+        if (b.dataIndex !== '' && data.sertifikatSAP[b.dataIndex]) {
+            Object.assign(data.sertifikatSAP[b.dataIndex], rec);
+            diubah++;
+        } else {
+            data.sertifikatSAP.push(rec);
+            ditambah++;
+        }
+    });
 
-    if (index !== '') {
-        // Mode edit: baris pertama memperbarui sertifikat terpilih,
-        // baris tambahan (bila ada) menjadi sertifikat baru untuk NIM yang sama.
-        const s = data.sertifikatSAP[parseInt(index)];
-        if (s) {
-            const b = baris[0];
-            s.nim = nim; s.nama = nama; s.angkatan = angkatan; s.kelas = kelas;
-            s.jenis = b.jenis; s.nilai = b.nilai; s.status = b.status; s.diambil = b.diambil; s.pdf = b.pdf;
-        }
-        for (let i = 1; i < baris.length; i++) {
-            data.sertifikatSAP.push(buatRecord(baris[i]));
-        }
-    } else {
-        baris.forEach(function(b) { data.sertifikatSAP.push(buatRecord(b)); });
+    // Penghapusan dilakukan dari index terbesar agar posisi index lain tidak bergeser
+    if (barisDihapus.length > 0) {
+        const hapus = [];
+        barisDihapus.forEach(function(i) { if (data.sertifikatSAP[i]) hapus.push(i); });
+        hapus.sort(function(a, b) { return b - a; }).forEach(function(i) { data.sertifikatSAP.splice(i, 1); });
     }
 
     saveData(data);
     closeModal('modalSertifikasi');
     renderAdminContent();
-    erpifyToast(baris.length + ' sertifikat berhasil disimpan.', 'success');
+
+    let pesan = ditambah + ' sertifikat ditambahkan';
+    if (diubah > 0) pesan += ', ' + diubah + ' diperbarui';
+    if (barisDihapus.length > 0) pesan += ', ' + barisDihapus.length + ' dihapus';
+    erpifyToast(pesan + '.', 'success');
 }
 
 function deleteSertifikasi(index) {
