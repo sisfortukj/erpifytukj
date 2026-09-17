@@ -1,0 +1,41 @@
+name: Hapus file diagnosa (sekali pakai)
+
+# Workflow ini hanya untuk membersihkan file diagnosa di server:
+#   api/selftest.php dan api/setup.php
+# Karena deploy biasa TIDAK menghapus file di server (pengaman), penghapusan
+# dilakukan lewat perintah FTP langsung.
+#
+# Setelah selesai, file workflow ini dihapus dari repo.
+
+on:
+  push:
+    paths:
+      - '.github/workflows/hapus-diagnosa.yml'
+  workflow_dispatch:
+
+jobs:
+  hapus:
+    name: Hapus file diagnosa di server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kirim perintah hapus via FTP
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          for f in api/selftest.php api/setup.php; do
+            echo "==> Mengirim perintah hapus: $f"
+            if curl -s -S -u "$FTP_USERNAME:$FTP_PASSWORD" "ftp://$FTP_SERVER/" -Q "DELE $f"; then
+              echo "   perintah terkirim"
+            else
+              echo "   (gagal atau file memang sudah tidak ada)"
+            fi
+          done
+
+      - name: Verifikasi (harus HTTP 404)
+        run: |
+          for u in api/selftest.php api/setup.php; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://lightslategray-cat-708888.hostingersite.com/$u")
+            echo "$u -> HTTP $code"
+          done
