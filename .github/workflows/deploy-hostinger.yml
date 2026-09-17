@@ -49,7 +49,12 @@ jobs:
           port: 21
           protocol: ftp
           local-dir: ./
-          server-dir: /public_html/
+          # Folder tujuan di server.
+          # Akun FTP Anda dibuat dengan directory: .../public_html
+          # - pakai "/" bila akun FTP SUDAH berada di dalam public_html
+          # - pakai "/domains/lightslategray-cat-708888.hostingersite.com/public_html/"
+          #   bila akun FTP masih berada di home directory (root = /home/u546035153)
+          server-dir: /
           # File yang TIDAK dikirim, supaya data sensitif & folder server tetap aman:
           # - api/config.php : kredensial database (hanya ada di server)
           # - foto & PDF hasil upload admin (folders uploads/ dan sertifikat/)
@@ -75,3 +80,18 @@ jobs:
           # false = jangan hapus file di server yang tidak ada di repo
           # (wajib false agar config.php & uploads tidak terhapus)
           dangerous-clean-slate: false
+
+      - name: Verifikasi hasil deploy
+        if: steps.cek.outputs.siap == 'true'
+        run: |
+          EXPECTED="$(cat deploy-check.txt)"
+          URL="https://lightslategray-cat-708888.hostingersite.com/deploy-check.txt"
+          ACTUAL="$(curl -s --max-time 25 "$URL" || true)"
+          echo "Isi file di repo  : $EXPECTED"
+          echo "Isi file di server: $ACTUAL"
+          if [ "$EXPECTED" = "$ACTUAL" ]; then
+            echo "::notice::Deploy BERHASIL - file sudah berada di folder yang benar."
+          else
+            echo "::error::Deploy selesai tetapi file penanda tidak ditemukan di website. Kemungkinan 'server-dir' belum tepat (file masuk ke folder lain). Ubah server-dir di workflow lalu jalankan ulang."
+            exit 1
+          fi
