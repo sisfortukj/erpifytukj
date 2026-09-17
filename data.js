@@ -13,7 +13,8 @@ const ERPIFY_UPLOAD_CATEGORY = {
     dsFotoInput: 'dosen',
     agFotoInput: 'anggota',
     brFotoInput: 'berita',
-    srFotoInput: 'sertifikat'
+    srFotoInput: 'sertifikat',
+    mtLogoInput: 'mitra'
 };
 
 let erpifyApiAvailable = false;   // true setelah api/data.php berhasil diakses
@@ -61,16 +62,16 @@ async function loadData() {
         if (!json || json.ok !== true) throw new Error((json && json.error) ? json.error : 'Respons API tidak valid');
         erpifyApiAvailable = true;
         if (json.data && json.data.platforms) {
-            erpifyDataCache = json.data;
+            erpifyDataCache = normalizeData(json.data);
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data)); } catch (e) {}
         } else {
             // Database masih kosong: pakai data default/local dulu, data
             // akan tersimpan ke server saat admin menyimpan perubahan.
-            erpifyDataCache = getLocalData();
+            erpifyDataCache = normalizeData(getLocalData());
         }
     } catch (e) {
         erpifyApiAvailable = false;
-        erpifyDataCache = getLocalData();
+        erpifyDataCache = normalizeData(getLocalData());
         // Bantu penelusuran masalah: penyebab API tidak aktif tampil di Console browser (F12)
         if (typeof console !== 'undefined' && console.warn) {
             console.warn('[ERPify] Backend tidak aktif, memakai mode statis/localStorage. Penyebab:', e && e.message ? e.message : e);
@@ -182,19 +183,31 @@ function getDefaultData() {
             { id:3, icon:'fas fa-cloud', name:'Acumatica', desc:'Platform ERP cloud-based modern dengan fleksibilitas tinggi untuk perusahaan menengah hingga besar.', foto:'' }
         ],
         dosen: [
-            { id:1, nama:'Dr. Ahmad Fauzi, M.Kom', jabatan:'Kepala Laboratorium ERPify', keahlian:'Ahli implementasi SAP dan Odoo. 15+ tahun pengalaman.', tags:['SAP','Odoo','ABAP'], foto:'' },
-            { id:2, nama:'Rina Wijaya, S.T., M.T.', jabatan:'Dosen Senior ERP', keahlian:'Spesialis ERP Accounting dan Supply Chain Management.', tags:['Accounting','SCM','Acumatica'], foto:'' },
-            { id:3, nama:'Budi Santoso, S.Kom., M.Eng.', jabatan:'Dosen Teknis ERP', keahlian:'Pakar konfigurasi teknis dan pengembangan modul ERP.', tags:['ABAP','Python','Odoo Dev'], foto:'' }
+            { id:1, kode:'DSN-01', nama:'Dr. Ahmad Fauzi, M.Kom', jabatan:'Kepala Laboratorium ERPify', keahlian:'Ahli implementasi SAP dan Odoo. 15+ tahun pengalaman.', tags:['SAP','Odoo','ABAP'], foto:'' },
+            { id:2, kode:'DSN-02', nama:'Rina Wijaya, S.T., M.T.', jabatan:'Dosen Senior ERP', keahlian:'Spesialis ERP Accounting dan Supply Chain Management.', tags:['Accounting','SCM','Acumatica'], foto:'' },
+            { id:3, kode:'DSN-03', nama:'Budi Santoso, S.Kom., M.Eng.', jabatan:'Dosen Teknis ERP', keahlian:'Pakar konfigurasi teknis dan pengembangan modul ERP.', tags:['ABAP','Python','Odoo Dev'], foto:'' }
         ],
-        mitra: ['PT. Tech ERP Solusi','PT. Digital Enterprise','CV. Software House','PT. Konsultan ERP','PT. Inovasi Teknologi','CV. Bisnis Digital'],
+        asprak: [
+            { kode:'ASP-01', nama:'Fajar Nugroho' },
+            { kode:'ASP-02', nama:'Putri Ayu' },
+            { kode:'ASP-03', nama:'Adi Saputra' }
+        ],
+        mitra: [
+            { nama:'PT. Tech ERP Solusi', logo:'' },
+            { nama:'PT. Digital Enterprise', logo:'' },
+            { nama:'CV. Software House', logo:'' },
+            { nama:'PT. Konsultan ERP', logo:'' },
+            { nama:'PT. Inovasi Teknologi', logo:'' },
+            { nama:'CV. Bisnis Digital', logo:'' }
+        ],
         generasi: {
             gen1: { title:'Generasi 1 - Angkatan Perdana', desc:'Generasi pertama yang menjadi pionir Laboratorium ERPify.', anggota:[
-                { nama:'Ahmad Rizki', nim:'2201001', jabatan:'Ketua Lab', divisi:'SAP', foto:'' },
-                { nama:'Siti Nurhaliza', nim:'2201002', jabatan:'Wakil Ketua', divisi:'Odoo', foto:'' },
-                { nama:'Budi Prasetyo', nim:'2201003', jabatan:'Sekretaris', divisi:'Acumatica', foto:'' },
-                { nama:'Dewi Lestari', nim:'2201004', jabatan:'Bendahara', divisi:'ABAP', foto:'' },
-                { nama:'Rudi Hartono', nim:'2201005', jabatan:'Anggota', divisi:'SCM', foto:'' },
-                { nama:'Ani Rahmawati', nim:'2201006', jabatan:'Anggota', divisi:'HR', foto:'' }
+                { nama:'Ahmad Rizki', nim:'2201001', jabatan:'Ketua Lab', divisi:'SAP', kodeDosen:'DSN-01', kodeAsprak:'ASP-01', foto:'' },
+                { nama:'Siti Nurhaliza', nim:'2201002', jabatan:'Wakil Ketua', divisi:'Odoo', kodeDosen:'DSN-01', kodeAsprak:'ASP-02', foto:'' },
+                { nama:'Budi Prasetyo', nim:'2201003', jabatan:'Sekretaris', divisi:'Acumatica', kodeDosen:'DSN-02', kodeAsprak:'ASP-01', foto:'' },
+                { nama:'Dewi Lestari', nim:'2201004', jabatan:'Bendahara', divisi:'ABAP', kodeDosen:'DSN-02', kodeAsprak:'ASP-03', foto:'' },
+                { nama:'Rudi Hartono', nim:'2201005', jabatan:'Anggota', divisi:'SCM', kodeDosen:'DSN-03', kodeAsprak:'ASP-02', foto:'' },
+                { nama:'Ani Rahmawati', nim:'2201006', jabatan:'Anggota', divisi:'HR', kodeDosen:'DSN-03', kodeAsprak:'ASP-03', foto:'' }
             ]},
             gen2: { title:'Generasi 2 - Angkatan Pengembangan', desc:'Generasi kedua yang melanjutkan pengembangan kompetensi ERP.', anggota:[
                 { nama:'Fajar Nugroho', nim:'2202001', jabatan:'Ketua Lab', divisi:'Odoo', foto:'' },
@@ -245,7 +258,8 @@ function getDefaultData() {
             { nomor:'SAP-2026-0002', nama:'Siti Nurhaliza', nim:'2201002', angkatan:'2022', kelas:'A', jenis:'SAP FI Associate', nilai:'A-', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' },
             { nomor:'SAP-2026-0003', nama:'Budi Prasetyo', nim:'2201003', angkatan:'2022', kelas:'B', jenis:'SAP ABAP Professional', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
             { nomor:'SAP-2026-0004', nama:'Dewi Lestari', nim:'2201004', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'A', status:'Belum Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0005', nama:'Rudi Hartono', nim:'2201005', angkatan:'2022', kelas:'B', jenis:'SAP SD Professional', nilai:'B', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' }
+            { nomor:'SAP-2026-0005', nama:'Rudi Hartono', nim:'2201005', angkatan:'2022', kelas:'B', jenis:'SAP SD Professional', nilai:'B', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' },
+            { nomor:'SAP-2026-0006', nama:'Ahmad Rizki', nim:'2201001', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' }
         ],
 
 
@@ -258,6 +272,152 @@ function getDefaultData() {
             { bulan:'Jun', jumlah:10 }
         ]
     };
+}
+
+// ============================================================
+// MIGRASI DATA: menyesuaikan data lama (localStorage / database)
+// dengan struktur terbaru tanpa menghapus isi yang sudah ada.
+// ============================================================
+function normalizeData(data) {
+    if (!data || typeof data !== 'object') return data;
+
+    // Daftar asprak (asisten praktikum)
+    if (!Array.isArray(data.asprak)) data.asprak = [];
+
+    // Dosen: pastikan setiap dosen punya kode
+    if (Array.isArray(data.dosen)) {
+        data.dosen.forEach(function(d, i) {
+            if (typeof d.kode !== 'string' || d.kode === '') {
+                d.kode = 'DSN-' + String(i + 1).padStart(2, '0');
+            }
+        });
+    }
+
+    // Mitra: dari daftar teks menjadi objek { nama, logo }
+    if (Array.isArray(data.mitra)) {
+        data.mitra = data.mitra.map(function(m) {
+            if (typeof m === 'string') return { nama: m, logo: '' };
+            if (!m || typeof m !== 'object') return { nama: String(m || ''), logo: '' };
+            return { nama: m.nama || '', logo: m.logo || '' };
+        });
+    }
+
+    // Anggota: tambahkan kode dosen & kode asprak bila belum ada
+    if (data.generasi) {
+        Object.keys(data.generasi).forEach(function(k) {
+            const gen = data.generasi[k];
+            if (gen && Array.isArray(gen.anggota)) {
+                gen.anggota.forEach(function(a) {
+                    if (typeof a.kodeDosen !== 'string') a.kodeDosen = '';
+                    if (typeof a.kodeAsprak !== 'string') a.kodeAsprak = '';
+                });
+            }
+        });
+    }
+
+    // Pengaturan halaman: lengkapi halaman yang belum ada
+    if (!data.pageSettings || typeof data.pageSettings !== 'object') data.pageSettings = {};
+    ['beranda', 'dosen', 'matakuliah', 'kerjasama', 'berita', 'sertifikat'].forEach(function(k) {
+        if (!data.pageSettings[k]) data.pageSettings[k] = { subtitle: '' };
+    });
+
+    // Sertifikat: pastikan punya field foto & pdf
+    if (Array.isArray(data.sertifikatSAP)) {
+        data.sertifikatSAP.forEach(function(s) {
+            if (typeof s.foto !== 'string') s.foto = '';
+            if (typeof s.pdf !== 'string') s.pdf = '';
+        });
+    }
+
+    return data;
+}
+
+// ===== HELPER DOSEN / ASPRAK / MITRA =====
+function dosenLabel(d) {
+    if (!d) return '';
+    return (d.kode ? d.kode + ' - ' : '') + (d.nama || '');
+}
+
+function asprakLabel(a) {
+    if (!a) return '';
+    return (a.kode ? a.kode + ' - ' : '') + (a.nama || '');
+}
+
+function getDosenByKode(kode) {
+    if (!kode) return null;
+    const data = getData();
+    return (data.dosen || []).find(function(d) { return d.kode === kode; }) || null;
+}
+
+function getAsprakByKode(kode) {
+    if (!kode) return null;
+    const data = getData();
+    return (data.asprak || []).find(function(a) { return a.kode === kode; }) || null;
+}
+
+// Label "Kode - Nama" untuk data mahasiswa/anggota
+function anggotaDosenLabel(a) {
+    if (!a) return '';
+    const d = getDosenByKode(a.kodeDosen);
+    if (d) return dosenLabel(d);
+    return a.kodeDosen || '';
+}
+
+function anggotaAsprakLabel(a) {
+    if (!a) return '';
+    const s = getAsprakByKode(a.kodeAsprak);
+    if (s) return asprakLabel(s);
+    return a.kodeAsprak || '';
+}
+
+// Kode otomatis untuk dosen & asprak (bisa diubah manual oleh admin)
+function generateKodeDosen() {
+    const data = getData();
+    let max = 0;
+    (data.dosen || []).forEach(function(d) {
+        const m = /(\d+)\s*$/.exec(d.kode || '');
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return 'DSN-' + String(max + 1).padStart(2, '0');
+}
+
+function generateKodeAsprak() {
+    const data = getData();
+    let max = 0;
+    (data.asprak || []).forEach(function(a) {
+        const m = /(\d+)\s*$/.exec(a.kode || '');
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return 'ASP-' + String(max + 1).padStart(2, '0');
+}
+
+// Susun <option> untuk daftar berkode (ditampilkan sebagai "Kode - Nama")
+function opsiKodeNama(daftar, kodeTerpilih, fnLabel) {
+    let html = '<option value="">-- Belum dipilih --</option>';
+    (daftar || []).forEach(function(x) {
+        const dipilih = (x.kode === kodeTerpilih) ? ' selected' : '';
+        html += '<option value="' + escapeHtml(x.kode) + '"' + dipilih + '>' + escapeHtml(fnLabel(x)) + '</option>';
+    });
+    return html;
+}
+
+// Isi dropdown dosen & asprak pada form anggota
+function isiSelectAnggota(kodeDosen, kodeAsprak) {
+    const data = getData();
+    const selDosen = document.getElementById('agKodeDosen');
+    const selAsprak = document.getElementById('agKodeAsprak');
+    if (selDosen) selDosen.innerHTML = opsiKodeNama(data.dosen, kodeDosen || '', dosenLabel);
+    if (selAsprak) selAsprak.innerHTML = opsiKodeNama(data.asprak, kodeAsprak || '', asprakLabel);
+}
+
+// Mitra bisa berupa teks (data lama) atau objek { nama, logo }
+function mitraNama(m) {
+    if (typeof m === 'string') return m;
+    return (m && m.nama) ? m.nama : '';
+}
+
+function mitraLogo(m) {
+    return (m && typeof m === 'object' && m.logo) ? m.logo : '';
 }
 
 function getLocalData() {
@@ -301,7 +461,7 @@ function getLocalData() {
 // Data aktif: dari API bila tersedia, jika tidak dari localStorage/default
 function getData() {
     if (!erpifyDataCache) {
-        erpifyDataCache = getLocalData();
+        erpifyDataCache = normalizeData(getLocalData());
     }
     return erpifyDataCache;
 }
@@ -393,7 +553,16 @@ function renderMitra() {
     const data = getData();
     const grid = document.getElementById('mitraGrid');
     if (!grid) return;
-    grid.innerHTML = data.mitra.map(m => `<div class="mitra-logo-item"><i class="fas fa-building" style="margin-right:8px;color:var(--blue);"></i>${m}</div>`).join('');
+    grid.innerHTML = (data.mitra || []).map(function(m) {
+        const nama = mitraNama(m);
+        const logo = mitraLogo(m);
+        return '<div class="mitra-card">'
+            + '<div class="mitra-logo">'
+            + (logo ? '<img src="' + logo + '" alt="Logo ' + escapeHtml(nama) + '">' : '<i class="fas fa-building"></i>')
+            + '</div>'
+            + '<h4>' + escapeHtml(nama) + '</h4>'
+            + '</div>';
+    }).join('');
 }
 
 // Statistik jumlah mitra untuk hero halaman kerjasama
@@ -422,8 +591,22 @@ function renderAnggota(genKey) {
     if (desc) desc.textContent = gen.desc;
     const grid = document.getElementById('anggotaGrid');
     if (!grid) return;
-    grid.innerHTML = gen.anggota.map(a => `<div class="anggota-card fade-in"><div class="avatar" style="${a.foto?'background:transparent;padding:0;overflow:hidden;':''}">${a.foto?`<img src="${a.foto}" alt="${a.nama}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:a.nama.charAt(0)}</div><h4>${a.nama}</h4><div class="nim">${a.nim}</div><div class="jabatan-anggota">${a.jabatan}</div><div class="divisi">${a.divisi}</div></div>`).join('');
-    setTimeout(() => document.querySelectorAll('#anggotaGrid .fade-in').forEach(el => el.classList.add('visible')), 100);
+    grid.innerHTML = gen.anggota.map(function(a) {
+        const dosen = anggotaDosenLabel(a);
+        const asprak = anggotaAsprakLabel(a);
+        return '<div class="anggota-card fade-in">'
+            + '<div class="avatar" style="' + (a.foto ? 'background:transparent;padding:0;overflow:hidden;' : '') + '">'
+            + (a.foto ? '<img src="' + a.foto + '" alt="' + escapeHtml(a.nama) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : escapeHtml(a.nama.charAt(0)))
+            + '</div>'
+            + '<h4>' + escapeHtml(a.nama) + '</h4>'
+            + '<div class="nim">' + escapeHtml(a.nim) + '</div>'
+            + '<div class="jabatan-anggota">' + escapeHtml(a.jabatan) + '</div>'
+            + '<div class="divisi">' + escapeHtml(a.divisi) + '</div>'
+            + (dosen ? '<div class="anggota-pembimbing"><span>Dosen</span>' + escapeHtml(dosen) + '</div>' : '')
+            + (asprak ? '<div class="anggota-pembimbing"><span>Asprak</span>' + escapeHtml(asprak) + '</div>' : '')
+            + '</div>';
+    }).join('');
+    setTimeout(function() { document.querySelectorAll('#anggotaGrid .fade-in').forEach(function(el) { el.classList.add('visible'); }); }, 100);
 }
 
 // ===== BERITA =====
@@ -485,51 +668,137 @@ function renderMK() {
 }
 
 // ===== CEK SERTIFIKAT =====
+// Ubah NIM menjadi bentuk seragam untuk pencocokan (abaikan spasi & tanda)
+function normalizeNim(nilai) {
+    return String(nilai == null ? '' : nilai).replace(/[^0-9a-zA-Z]/g, '').toLowerCase();
+}
+
+// Amankan teks sebelum dimasukkan ke HTML
+function escapeHtml(teks) {
+    return String(teks == null ? '' : teks)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Satu baris informasi di dalam kartu sertifikat
+function barisInfoSertifikat(label, nilai) {
+    return '<div class="sertifikat-row"><span class="lbl">' + label + '</span><span class="val">' + nilai + '</span></div>';
+}
+
+// Satu kartu sertifikat (satu mahasiswa bisa punya beberapa sertifikat)
+function kartuSertifikat(s) {
+    const sudahDiambil = s.diambil === 'Sudah Diambil';
+    const bisaDiambil = s.status === 'Sudah Bisa Diambil';
+
+    const badgeKelayakan = bisaDiambil
+        ? '<span class="sertif-pill ok"><i class="fas fa-check-circle"></i> Sudah bisa diambil</span>'
+        : '<span class="sertif-pill wait"><i class="fas fa-clock"></i> Belum bisa diambil</span>';
+    const badgeDiambil = sudahDiambil
+        ? '<span class="sertif-pill ok"><i class="fas fa-check-double"></i> Sudah diambil</span>'
+        : '<span class="sertif-pill wait"><i class="fas fa-box"></i> Belum diambil</span>';
+
+    const pdfUrl = getSertifikatPdfUrl(s);
+    const namaFile = s.nomor + '.pdf';
+
+    const pembayaran = (!sudahDiambil && bisaDiambil)
+        ? '<div class="sertifikat-payment"><p><strong><i class="fas fa-info-circle"></i> Informasi Pembayaran Sertifikat</strong></p>'
+            + '<p>Silakan lakukan pembayaran biaya sertifikat ke rekening <strong>Bank Mandiri 123-00-4567890 a.n. Laboratorium ERPify</strong>. '
+            + 'Setelah transfer, konfirmasi bukti bayar ke admin laboratorium.</p></div>'
+        : '';
+
+    return '<div class="sertifikat-card">'
+        + '<div class="sertifikat-card-head">'
+        + '<i class="fas fa-certificate"></i>'
+        + '<div class="sertifikat-card-title"><h5>' + escapeHtml(s.jenis) + '</h5><span class="sertif-kode">' + escapeHtml(s.nomor) + '</span></div>'
+        + '<span class="sertif-nilai">' + escapeHtml(s.nilai || '-') + '</span>'
+        + '</div>'
+        + '<div class="sertifikat-card-body">'
+        + barisInfoSertifikat('Nama', escapeHtml(s.nama))
+        + barisInfoSertifikat('NIM', escapeHtml(s.nim))
+        + barisInfoSertifikat('Angkatan', escapeHtml(s.angkatan || '-'))
+        + barisInfoSertifikat('Kelas', escapeHtml(s.kelas || '-'))
+        + barisInfoSertifikat('Status Kelayakan', badgeKelayakan)
+        + barisInfoSertifikat('Status Pengambilan', badgeDiambil)
+        + '</div>'
+        + (s.foto ? '<div class="sertifikat-foto-wrap"><img src="' + s.foto + '" alt="Foto sertifikat ' + escapeHtml(s.nomor) + '"></div>' : '')
+        + pembayaran
+        + '<div class="sertifikat-actions" style="display:none;">'
+        + '<a class="btn btn-primary" href="' + pdfUrl + '" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Lihat Sertifikat</a>'
+        + '<a class="btn btn-outline btn-download" href="' + pdfUrl + '" download="' + escapeHtml(namaFile) + '"><i class="fas fa-download"></i> Unduh Sertifikat</a>'
+        + '</div>'
+        + '<p class="sertifikat-nofile" style="display:none;"><i class="fas fa-info-circle"></i> File PDF sertifikat ini belum tersedia. Silakan hubungi admin laboratorium.</p>'
+        + '</div>';
+}
+
+// Tampilkan tombol Lihat/Unduh hanya bila file PDF benar-benar ada
+function cekFileSertifikat(s, kartu) {
+    if (!kartu) return;
+    const aksi = kartu.querySelector('.sertifikat-actions');
+    const kosong = kartu.querySelector('.sertifikat-nofile');
+    if (!aksi) return;
+
+    const tampil = function() {
+        aksi.style.display = 'flex';
+        if (kosong) kosong.style.display = 'none';
+    };
+    const sembunyi = function() {
+        aksi.style.display = 'none';
+        if (kosong) kosong.style.display = 'block';
+    };
+
+    const url = getSertifikatPdfUrl(s);
+    if (!url) { sembunyi(); return; }
+    if (url.indexOf('data:') === 0 || url.indexOf('://') > -1 || url.charAt(0) === '/') { tampil(); return; }
+    if (typeof fetch !== 'function' || window.location.protocol === 'file:') { sembunyi(); return; }
+
+    fetch(url, { method: 'HEAD', cache: 'no-store' })
+        .then(function(res) { if (res && res.ok) { tampil(); } else { sembunyi(); } })
+        .catch(function() { sembunyi(); });
+}
+
+// ===== CEK SERTIFIKAT BERDASARKAN NIM =====
+// Satu NIM dapat memiliki lebih dari satu sertifikat; semuanya ditampilkan
+// sebagai kartu terpisah dengan tombol Lihat & Unduh masing-masing.
 function cekSertifikat() {
     const input = document.getElementById('sertifikatInput');
     const result = document.getElementById('sertifikatResult');
     if (!input || !result) return;
-    const nomor = input.value.trim();
-    if (!nomor) {
+
+    const nim = input.value.trim();
+    if (!nim) {
         result.className = 'sertifikat-result invalid';
-        result.innerHTML = '<i class="fas fa-exclamation-circle"></i><h4>Masukkan Nomor Sertifikat</h4><p>Silakan masukkan nomor sertifikat SAP terlebih dahulu.</p>';
+        result.innerHTML = '<i class="fas fa-exclamation-circle"></i><h4>Masukkan NIM</h4><p>Silakan masukkan NIM Anda terlebih dahulu untuk melihat sertifikat.</p>';
         return;
     }
+
     const data = getData();
-    const found = data.sertifikatSAP.find(s => s.nomor.toLowerCase() === nomor.toLowerCase());
-    if (found) {
-        const sudahDiambil = found.diambil === 'Sudah Diambil';
-        const statusAmbil = found.status === 'Sudah Bisa Diambil'
-            ? '<span style="color:#16a34a;font-weight:600;"><i class="fas fa-check-circle"></i> Sertifikat sudah bisa diambil</span>'
-            : '<span style="color:#d97706;font-weight:600;"><i class="fas fa-clock"></i> Sertifikat belum bisa diambil</span>';
-        const statusDiambil = sudahDiambil
-            ? '<span style="color:#16a34a;font-weight:600;"><i class="fas fa-check-double"></i> Sertifikat SUDAH DIAMBIL</span>'
-            : '<span style="color:#d97706;font-weight:600;"><i class="fas fa-box"></i> Sertifikat BELUM DIAMBIL</span>';
-        
-        const fotoHtml = found.foto ? '<img src="'+found.foto+'" class="sertifikat-foto" alt="Foto Sertifikat '+found.nomor+'">' : '';
+    const kunci = normalizeNim(nim);
+    const daftar = (data.sertifikatSAP || []).filter(function(s) {
+        return normalizeNim(s.nim) === kunci;
+    });
 
-        let detailHtml = '<div style="text-align:left;margin-top:16px;"><p><strong>Kode Sertifikat:</strong> '+found.nomor+'</p><p><strong>Nama Lengkap:</strong> '+found.nama+'</p><p><strong>NIM:</strong> '+found.nim+'</p><p><strong>Angkatan:</strong> '+found.angkatan+'</p><p><strong>Kelas:</strong> '+(found.kelas||'-')+'</p><p><strong>Jenis Sertifikasi:</strong> '+found.jenis+'</p><p><strong>Nilai:</strong> '+found.nilai+'</p><p><strong>Status Pengambilan:</strong> '+statusDiambil+'</p>';
-        
-        // Jika sudah diambil, tidak perlu tampilkan status kelayakan dan info pembayaran
-        if (!sudahDiambil) {
-            detailHtml += '<p><strong>Status Kelayakan:</strong> '+statusAmbil+'</p></div>';
-            detailHtml += '<div style="margin-top:20px;padding:16px;background:rgba(32,122,224,0.08);border-radius:10px;text-align:left;"><p style="font-weight:600;color:var(--navy);margin-bottom:8px;"><i class="fas fa-info-circle"></i> Informasi Pembayaran Sertifikat</p><p style="font-size:0.875rem;color:var(--gray-600);margin-bottom:0;">Silakan lakukan pembayaran biaya sertifikat ke rekening <strong>Bank Mandiri 123-00-4567890 a.n. Laboratorium ERPify</strong>. Setelah transfer, silakan konfirmasi bukti bayar ke nomor admin WhatsApp <strong>+62 812-3456-7890</strong>.</p></div>';
-        } else {
-            detailHtml += '</div>';
-        }
-        
-        // Tombol lihat file PDF sertifikat (muncul hanya jika file PDF-nya tersedia)
-        const pdfUrl = getSertifikatPdfUrl(found);
-        const pdfHtml = '<div class="sertifikat-actions" id="sertifikatPdfWrap" style="display:none;"><a class="btn btn-primary" id="sertifikatPdfBtn" href="'+pdfUrl+'" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Lihat Sertifikat (PDF)</a></div>';
-
-        result.className = 'sertifikat-result valid';
-        result.innerHTML = '<i class="fas fa-check-circle"></i><h4>Sertifikat DITEMUKAN</h4>'+fotoHtml+detailHtml+pdfHtml;
-        initSertifikatPdfButton(pdfUrl);
-
-    } else {
+    if (daftar.length === 0) {
         result.className = 'sertifikat-result invalid';
-        result.innerHTML = '<i class="fas fa-times-circle"></i><h4>Sertifikat TIDAK DITEMUKAN</h4><p>Nomor sertifikat "<strong>'+nomor+'</strong>" tidak terdaftar di sistem ERPify. Silakan periksa kembali nomor sertifikat Anda atau hubungi admin laboratorium.</p>';
+        result.innerHTML = '<i class="fas fa-times-circle"></i><h4>Data Tidak Ditemukan</h4>'
+            + '<p>NIM "<strong>' + escapeHtml(nim) + '</strong>" belum terdaftar pada data sertifikasi ERPify. '
+            + 'Silakan periksa kembali NIM Anda atau hubungi admin laboratorium.</p>';
+        return;
     }
+
+    const nama = daftar[0].nama || '';
+    result.className = 'sertifikat-result valid';
+    result.innerHTML = '<i class="fas fa-check-circle"></i>'
+        + '<h4>Sertifikat Ditemukan (' + daftar.length + ')</h4>'
+        + '<p>NIM <strong>' + escapeHtml(nim) + '</strong>' + (nama ? ' &middot; ' + escapeHtml(nama) : '') + '</p>'
+        + '<div class="sertifikat-list">' + daftar.map(kartuSertifikat).join('') + '</div>';
+
+    const kartuList = result.querySelectorAll('.sertifikat-card');
+    daftar.forEach(function(s, i) {
+        cekFileSertifikat(s, kartuList[i]);
+    });
 }
 
 
@@ -544,21 +813,6 @@ function getSertifikatPdfUrl(sertifikat) {
     return SERTIFIKAT_PDF_DIR + sertifikat.nomor + '.pdf';
 }
 
-// Tombol PDF hanya ditampilkan kalau file-nya benar-benar ada
-function initSertifikatPdfButton(url) {
-    const wrap = document.getElementById('sertifikatPdfWrap');
-    if (!wrap || !url) return;
-    // Data URL (hasil upload di browser) atau URL absolut/relatif backend -> tampilkan langsung
-    if (url.indexOf('data:') === 0 || url.indexOf('://') > -1 || url.charAt(0) === '/') {
-        wrap.style.display = 'block';
-        return;
-    }
-    // Cek keberadaan file; kalau tidak ada, tombol dibiarkan tersembunyi
-    if (typeof fetch !== 'function' || window.location.protocol === 'file:') return;
-    fetch(url, { method: 'HEAD', cache: 'no-store' })
-        .then(function(res) { if (res && res.ok) wrap.style.display = 'block'; })
-        .catch(function() {});
-}
 
 // Upload PDF dari panel admin
 function handleSertifikatPdfUpload(input) {
@@ -684,21 +938,12 @@ function setupUpload(inputId, previewId, wrapperId) {
         if (p) p.style.display = 'none';
     };
 
-    // Klik wrapper trigger input file
-    wrapper.addEventListener('click', function(e) {
-        if (e.target !== input) {
-            input.click();
-        }
-    });
-
-    input.addEventListener('change', function() {
-        const file = this.files[0];
-        if (!file) return;
+    // Proses file (setelah dipotong, atau langsung bila tidak perlu potong)
+    const proses = function(file) {
         const kategori = ERPIFY_UPLOAD_CATEGORY[inputId] || 'umum';
-        // Backend aktif: unggah ke server supaya file tersimpan permanen
         if (apiIsEnabled()) {
             const infoLama = wrapper.querySelector('p') ? wrapper.querySelector('p').innerHTML : '';
-            if (infoLama && wrapper.querySelector('p')) wrapper.querySelector('p').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
+            if (wrapper.querySelector('p')) wrapper.querySelector('p').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
             uploadFileToApi(file, kategori).then(function(res) {
                 tampilkan(res.url);
                 erpifyToast('File berhasil diunggah ke server.', 'success');
@@ -708,13 +953,238 @@ function setupUpload(inputId, previewId, wrapperId) {
             });
             return;
         }
-        // Tanpa backend: simpan sementara di browser (localStorage)
         const reader = new FileReader();
         reader.onload = function(e) {
             tampilkan(e.target.result);
         };
         reader.readAsDataURL(file);
+    };
+
+    wrapper.addEventListener('click', function(e) {
+        if (e.target !== input) {
+            input.click();
+        }
     });
+
+    input.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        const perluCrop = ERPIFY_CROP_INFO[inputId] && String(file.type || '').indexOf('image/') === 0;
+        if (perluCrop) {
+            bukaCropModal(inputId, file, proses, this);
+            return;
+        }
+        proses(file);
+    });
+}
+
+// ============================================================
+// ATUR POSISI FOTO (CROP) SEBELUM DIUNGGAH - tanpa library tambahan
+// ============================================================
+const ERPIFY_CROP_INFO = {
+    dsFotoInput: { rasio: 1, lebar: 600, tinggi: 600, label: 'Foto profil dosen (1:1)' },
+    agFotoInput: { rasio: 1, lebar: 600, tinggi: 600, label: 'Foto profil anggota (1:1)' },
+    srFotoInput: { rasio: 4 / 3, lebar: 900, tinggi: 675, label: 'Foto / scan sertifikat (4:3)' },
+    brFotoInput: { rasio: 16 / 9, lebar: 1024, tinggi: 576, label: 'Gambar cover berita (16:9)' }
+};
+
+let cropState = null;
+
+function bukaCropModal(inputId, file, callback, inputEl) {
+    if (!ERPIFY_CROP_INFO[inputId]) return;
+    const gambar = new Image();
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        gambar.onload = function() {
+            tampilkanCrop(inputId, gambar, callback, inputEl);
+        };
+        gambar.onerror = function() {
+            erpifyToast('Gambar tidak dapat dibaca.', 'error');
+            if (inputEl) inputEl.value = '';
+        };
+        gambar.src = e.target.result;
+    };
+    reader.onerror = function() {
+        erpifyToast('Gagal membaca file gambar.', 'error');
+        if (inputEl) inputEl.value = '';
+    };
+    reader.readAsDataURL(file);
+}
+
+function tampilkanCrop(inputId, gambar, callback, inputEl) {
+    const canvas = document.getElementById('cropCanvas');
+    const info = ERPIFY_CROP_INFO[inputId];
+    if (!canvas || !info) return;
+
+    const lebarTampil = 480;
+    const tinggiTampil = Math.round(lebarTampil / info.rasio);
+    canvas.width = lebarTampil;
+    canvas.height = tinggiTampil;
+
+    const minSkala = Math.max(lebarTampil / gambar.width, tinggiTampil / gambar.height);
+    cropState = {
+        inputId: inputId,
+        info: info,
+        gambar: gambar,
+        canvas: canvas,
+        callback: callback,
+        inputEl: inputEl,
+        minSkala: minSkala,
+        skala: minSkala,
+        x: (lebarTampil - gambar.width * minSkala) / 2,
+        y: (tinggiTampil - gambar.height * minSkala) / 2,
+        drag: false
+    };
+
+    const hint = document.getElementById('cropHint');
+    if (hint) hint.textContent = info.label + ' - geser foto dan atur zoom agar hasilnya pas.';
+    const slider = document.getElementById('cropZoom');
+    if (slider) slider.value = '1';
+
+    gambarCrop();
+    openModal('modalCrop');
+}
+
+function batasiCrop() {
+    const s = cropState;
+    if (!s) return;
+    const w = s.gambar.width * s.skala;
+    const h = s.gambar.height * s.skala;
+    s.x = Math.min(0, Math.max(s.canvas.width - w, s.x));
+    s.y = Math.min(0, Math.max(s.canvas.height - h, s.y));
+}
+
+function gambarCrop() {
+    const s = cropState;
+    if (!s) return;
+    const ctx = s.canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#f0f2f5';
+    ctx.fillRect(0, 0, s.canvas.width, s.canvas.height);
+    ctx.drawImage(s.gambar, s.x, s.y, s.gambar.width * s.skala, s.gambar.height * s.skala);
+}
+
+function initCropCanvas() {
+    const canvas = document.getElementById('cropCanvas');
+    if (!canvas || canvas._siapCrop) return;
+    canvas._siapCrop = true;
+
+    const posisiLokal = function(klienX, klienY) {
+        const kotak = canvas.getBoundingClientRect();
+        return { x: klienX - kotak.left, y: klienY - kotak.top };
+    };
+    const mulai = function(px, py) {
+        if (!cropState) return;
+        cropState.drag = true;
+        cropState.px = px;
+        cropState.py = py;
+    };
+    const gerak = function(px, py) {
+        if (!cropState || !cropState.drag) return;
+        cropState.x += px - cropState.px;
+        cropState.y += py - cropState.py;
+        cropState.px = px;
+        cropState.py = py;
+        batasiCrop();
+        gambarCrop();
+    };
+    const berhenti = function() {
+        if (cropState) cropState.drag = false;
+    };
+
+    canvas.addEventListener('mousedown', function(e) {
+        mulai(e.offsetX, e.offsetY);
+        e.preventDefault();
+    });
+    canvas.addEventListener('mousemove', function(e) {
+        gerak(e.offsetX, e.offsetY);
+    });
+    window.addEventListener('mouseup', berhenti);
+    canvas.addEventListener('touchstart', function(e) {
+        const t = e.touches[0];
+        const p = posisiLokal(t.clientX, t.clientY);
+        mulai(p.x, p.y);
+        e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', function(e) {
+        const t = e.touches[0];
+        const p = posisiLokal(t.clientX, t.clientY);
+        gerak(p.x, p.y);
+        e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', berhenti);
+
+    const slider = document.getElementById('cropZoom');
+    if (slider) {
+        slider.addEventListener('input', function() {
+            if (!cropState) return;
+            const lama = cropState.skala;
+            const baru = cropState.minSkala * parseFloat(this.value || '1');
+            const cx = cropState.canvas.width / 2;
+            const cy = cropState.canvas.height / 2;
+            cropState.x = cx - (cx - cropState.x) * (baru / lama);
+            cropState.y = cy - (cy - cropState.y) * (baru / lama);
+            cropState.skala = baru;
+            batasiCrop();
+            gambarCrop();
+        });
+    }
+}
+
+function tutupCropModal() {
+    const s = cropState;
+    cropState = null;
+    if (s && s.inputEl) s.inputEl.value = '';
+    closeModal('modalCrop');
+}
+
+function terapkanCrop() {
+    const s = cropState;
+    if (!s) return;
+
+    const keluar = document.createElement('canvas');
+    keluar.width = s.info.lebar;
+    keluar.height = s.info.tinggi;
+    const k = s.info.lebar / s.canvas.width;
+    const ctx = keluar.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, keluar.width, keluar.height);
+    ctx.drawImage(s.gambar, s.x * k, s.y * k, s.gambar.width * s.skala * k, s.gambar.height * s.skala * k);
+
+    const callback = s.callback;
+    const inputEl = s.inputEl;
+
+    const selesai = function(blob) {
+        const fileBaru = new File([blob], 'foto_' + Date.now() + '.jpg', { type: 'image/jpeg' });
+        cropState = null;
+        if (inputEl) inputEl.value = '';
+        closeModal('modalCrop');
+        if (callback) callback(fileBaru);
+        erpifyToast('Foto sudah dipotong sesuai bingkai.', 'success');
+    };
+
+    if (keluar.toBlob) {
+        keluar.toBlob(function(blob) {
+            if (blob) {
+                selesai(blob);
+            } else {
+                erpifyToast('Gagal memproses foto.', 'error');
+            }
+        }, 'image/jpeg', 0.92);
+    } else {
+        const dataUrl = keluar.toDataURL('image/jpeg', 0.92);
+        selesai(dataUrlToFile(dataUrl, 'foto_' + Date.now() + '.jpg'));
+    }
+}
+
+// Ubah data URL menjadi File (untuk peramban lama yang tanpa canvas.toBlob)
+function dataUrlToFile(dataUrl, namaFile) {
+    const bagian = String(dataUrl).split(',');
+    const mime = (bagian[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+    const biner = atob(bagian[1] || '');
+    const buf = new Uint8Array(biner.length);
+    for (let i = 0; i < biner.length; i++) buf[i] = biner.charCodeAt(i);
+    return new File([buf], namaFile, { type: mime });
 }
 
 
@@ -792,7 +1262,7 @@ function renderAdminDosen() {
     const container = document.getElementById('adminContent');
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalDosen()"><i class="fas fa-plus"></i> Tambah Dosen</button></div><div class="admin-list">'+
-        data.dosen.map(d => '<div class="admin-item"><div style="width:40px;height:40px;border-radius:50%;background:'+(d.foto?'transparent':'var(--blue)')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;">'+(d.foto?'<img src="'+d.foto+'" style="width:100%;height:100%;object-fit:cover;">':d.nama.charAt(0))+'</div><div class="info"><strong>'+d.nama+'</strong><br><small>'+d.jabatan+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalDosen('+d.id+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteDosen('+d.id+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+        data.dosen.map(d => '<div class="admin-item"><div style="width:40px;height:40px;border-radius:50%;background:'+(d.foto?'transparent':'var(--blue)')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;">'+(d.foto?'<img src="'+d.foto+'" style="width:100%;height:100%;object-fit:cover;">':d.nama.charAt(0))+'</div><div class="info"><strong>'+escapeHtml(dosenLabel(d))+'</strong><br><small>'+escapeHtml(d.jabatan)+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalDosen('+d.id+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteDosen('+d.id+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
 }
 
 function showModalDosen(id) {
@@ -800,6 +1270,7 @@ function showModalDosen(id) {
     const d = id ? data.dosen.find(x => x.id === id) : null;
     document.getElementById('modalDosenTitle').textContent = d ? 'Edit Dosen' : 'Tambah Dosen Baru';
     document.getElementById('dsId').value = d ? d.id : '';
+    document.getElementById('dsKode').value = d ? (d.kode || '') : generateKodeDosen();
     document.getElementById('dsNama').value = d ? d.nama : '';
     document.getElementById('dsJabatan').value = d ? d.jabatan : '';
     document.getElementById('dsKeahlian').value = d ? d.keahlian : '';
@@ -814,18 +1285,20 @@ function showModalDosen(id) {
 function saveDosen() {
     const data = getData();
     const id = document.getElementById('dsId').value;
+    const kode = document.getElementById('dsKode').value.trim() || generateKodeDosen();
     const nama = document.getElementById('dsNama').value.trim();
     const jabatan = document.getElementById('dsJabatan').value.trim();
     const keahlian = document.getElementById('dsKeahlian').value.trim();
     const tags = document.getElementById('dsTags').value.split(',').map(t => t.trim()).filter(t => t);
     if (!nama || !jabatan) { alert('Nama dan jabatan harus diisi!'); return; }
-    const preview = document.getElementById('dsFotoPreview');
+    const bentrok = data.dosen.find(x => x.kode === kode && String(x.id) !== String(id));
+    if (bentrok) { alert('Kode dosen "' + kode + '" sudah dipakai oleh ' + bentrok.nama + '. Gunakan kode lain.'); return; }
     const foto = getUploadPreviewValue('dsFotoPreview');
     if (id) {
         const d = data.dosen.find(x => x.id === parseInt(id));
-        if (d) { d.nama = nama; d.jabatan = jabatan; d.keahlian = keahlian; d.tags = tags; if (foto) d.foto = foto; }
+        if (d) { d.kode = kode; d.nama = nama; d.jabatan = jabatan; d.keahlian = keahlian; d.tags = tags; if (foto) d.foto = foto; }
     } else {
-        data.dosen.push({ id: ++nextId, nama, jabatan, keahlian, tags, foto });
+        data.dosen.push({ id: ++nextId, kode, nama, jabatan, keahlian, tags, foto });
     }
     saveData(data);
     closeModal('modalDosen');
@@ -840,20 +1313,105 @@ function deleteDosen(id) {
     renderAdminContent();
 }
 
+// ===== ADMIN ASPRAK (asisten praktikum) =====
+function renderAdminAsprak() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    const daftar = data.asprak || [];
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalAsprak()"><i class="fas fa-plus"></i> Tambah Asprak</button></div>'
+        + '<div class="admin-list">'
+        + daftar.map(function(a, i) {
+            return '<div class="admin-item"><div style="width:40px;height:40px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">' + escapeHtml((a.nama || '?').charAt(0)) + '</div>'
+                + '<div class="info"><strong>' + escapeHtml(asprakLabel(a)) + '</strong><br><small>Asisten praktikum</small></div>'
+                + '<div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAsprak(' + i + ')"><i class="fas fa-pen"></i></button>'
+                + '<button class="btn btn-sm btn-danger" onclick="deleteAsprak(' + i + ')"><i class="fas fa-trash"></i></button></div></div>';
+        }).join('')
+        + (daftar.length === 0 ? '<p style="text-align:center;color:var(--gray-400);padding:20px;">Belum ada data asprak.</p>' : '')
+        + '</div>';
+}
+
+function showModalAsprak(index) {
+    const data = getData();
+    const a = (index !== undefined && index !== null && index >= 0) ? (data.asprak || [])[index] : null;
+    document.getElementById('modalAsprakTitle').textContent = a ? 'Edit Asprak' : 'Tambah Asprak Baru';
+    document.getElementById('asIndex').value = a ? index : '';
+    document.getElementById('asKode').value = a ? a.kode : generateKodeAsprak();
+    document.getElementById('asNama').value = a ? a.nama : '';
+    openModal('modalAsprak');
+}
+
+function saveAsprak() {
+    const data = getData();
+    if (!Array.isArray(data.asprak)) data.asprak = [];
+    const index = document.getElementById('asIndex').value;
+    const kode = document.getElementById('asKode').value.trim() || generateKodeAsprak();
+    const nama = document.getElementById('asNama').value.trim();
+    if (!nama) { alert('Nama asprak harus diisi!'); return; }
+    const bentrok = data.asprak.find(function(a, i) { return a.kode === kode && String(i) !== String(index); });
+    if (bentrok) { alert('Kode asprak "' + kode + '" sudah dipakai oleh ' + bentrok.nama + '. Gunakan kode lain.'); return; }
+    if (index !== '') {
+        data.asprak[parseInt(index)] = { kode: kode, nama: nama };
+    } else {
+        data.asprak.push({ kode: kode, nama: nama });
+    }
+    saveData(data);
+    closeModal('modalAsprak');
+    renderAdminContent();
+}
+
+function deleteAsprak(index) {
+    if (!confirm('Hapus asprak ini?')) return;
+    const data = getData();
+    (data.asprak || []).splice(index, 1);
+    saveData(data);
+    renderAdminContent();
+}
+
 // ===== ADMIN MITRA =====
 function renderAdminMitra() {
     const data = getData();
     const container = document.getElementById('adminContent');
     if (!container) return;
-    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalMitra()"><i class="fas fa-plus"></i> Tambah Mitra</button></div><div class="admin-list">'+
-        data.mitra.map((m, i) => '<div class="admin-item"><div class="info"><strong>'+m+'</strong></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalMitra('+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteMitra('+i+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalMitra()"><i class="fas fa-plus"></i> Tambah Mitra</button></div><div class="admin-list">'
+        + (data.mitra || []).map(function(m, i) {
+            const logo = mitraLogo(m);
+            return '<div class="admin-item">'
+                + '<div style="width:44px;height:44px;border-radius:10px;background:' + (logo ? 'transparent' : 'var(--gray-100)') + ';display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+                + (logo ? '<img src="' + logo + '" style="width:100%;height:100%;object-fit:contain;">' : '<i class="fas fa-building" style="color:var(--blue);"></i>')
+                + '</div>'
+                + '<div class="info"><strong>' + escapeHtml(mitraNama(m)) + '</strong><br><small>' + (logo ? 'Logo terpasang' : 'Belum ada logo') + '</small></div>'
+                + '<div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalMitra(' + i + ')"><i class="fas fa-pen"></i></button>'
+                + '<button class="btn btn-sm btn-danger" onclick="deleteMitra(' + i + ')"><i class="fas fa-trash"></i></button></div></div>';
+        }).join('') + '</div>';
 }
 
 function showModalMitra(index) {
     const data = getData();
-    document.getElementById('modalMitraTitle').textContent = (index !== undefined && index !== null && index >= 0) ? 'Edit Mitra' : 'Tambah Mitra Baru';
-    document.getElementById('mtIndex').value = (index !== undefined && index !== null && index >= 0) ? index : '';
-    document.getElementById('mtName').value = (index !== undefined && index !== null && index >= 0) ? data.mitra[index] : '';
+    const ada = (index !== undefined && index !== null && index >= 0);
+    const m = ada ? (data.mitra || [])[index] : null;
+    document.getElementById('modalMitraTitle').textContent = ada ? 'Edit Mitra' : 'Tambah Mitra Baru';
+    document.getElementById('mtIndex').value = ada ? index : '';
+    document.getElementById('mtName').value = m ? mitraNama(m) : '';
+    const preview = document.getElementById('mtLogoPreview');
+    const wrapper = document.getElementById('mtLogoWrapper');
+    if (preview) {
+        const icon = wrapper ? wrapper.querySelector('i') : null;
+        const hint = wrapper ? wrapper.querySelector('p') : null;
+        if (m && mitraLogo(m)) {
+            preview.src = mitraLogo(m);
+            preview.style.display = 'block';
+            if (wrapper) wrapper.classList.add('has-image');
+            if (icon) icon.style.display = 'none';
+            if (hint) hint.style.display = 'none';
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+            if (wrapper) wrapper.classList.remove('has-image');
+            if (icon) icon.style.display = '';
+            if (hint) hint.style.display = '';
+        }
+    }
     openModal('modalMitra');
 }
 
@@ -862,10 +1420,13 @@ function saveMitra() {
     const index = document.getElementById('mtIndex').value;
     const name = document.getElementById('mtName').value.trim();
     if (!name) { alert('Nama mitra harus diisi!'); return; }
+    if (!Array.isArray(data.mitra)) data.mitra = [];
+    const logoBaru = getUploadPreviewValue('mtLogoPreview');
     if (index !== '') {
-        data.mitra[parseInt(index)] = name;
+        const lama = data.mitra[parseInt(index)] || {};
+        data.mitra[parseInt(index)] = { nama: name, logo: logoBaru || mitraLogo(lama) };
     } else {
-        data.mitra.push(name);
+        data.mitra.push({ nama: name, logo: logoBaru });
     }
     saveData(data);
     closeModal('modalMitra');
@@ -901,7 +1462,7 @@ function renderAdminAnggotaList() {
     if (!gen) return;
     const list = document.getElementById('adminAnggotaList');
     if (!list) return;
-    list.innerHTML = gen.anggota.map((a, i) => '<div class="admin-item" style="margin-bottom:8px;"><div style="width:36px;height:36px;border-radius:50%;background:'+(a.foto?'transparent':'linear-gradient(135deg,var(--blue),var(--navy))')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;overflow:hidden;">'+(a.foto?'<img src="'+a.foto+'" style="width:100%;height:100%;object-fit:cover;">':a.nama.charAt(0))+'</div><div class="info"><strong>'+a.nama+'</strong> ('+a.nim+')<br><small>'+a.jabatan+' - '+a.divisi+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAnggota(\''+genKey+'\','+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteAnggota(\''+genKey+'\','+i+')"><i class="fas fa-trash"></i></button></div></div>').join('');
+    list.innerHTML = gen.anggota.map((a, i) => '<div class="admin-item" style="margin-bottom:8px;"><div style="width:36px;height:36px;border-radius:50%;background:'+(a.foto?'transparent':'linear-gradient(135deg,var(--blue),var(--navy))')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;overflow:hidden;">'+(a.foto?'<img src="'+a.foto+'" style="width:100%;height:100%;object-fit:cover;">':escapeHtml(a.nama.charAt(0)))+'</div><div class="info"><strong>'+escapeHtml(a.nama)+'</strong> ('+escapeHtml(a.nim)+')<br><small>'+escapeHtml(a.jabatan)+' - '+escapeHtml(a.divisi)+(anggotaDosenLabel(a)?' | Dosen: '+escapeHtml(anggotaDosenLabel(a)):'')+(anggotaAsprakLabel(a)?' | Asprak: '+escapeHtml(anggotaAsprakLabel(a)):'')+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAnggota(\''+genKey+'\','+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteAnggota(\''+genKey+'\','+i+')"><i class="fas fa-trash"></i></button></div></div>').join('');
 }
 
 function showModalAnggota(genKey, index) {
@@ -917,6 +1478,7 @@ function showModalAnggota(genKey, index) {
     document.getElementById('agNim').value = a ? a.nim : '';
     document.getElementById('agJabatan').value = a ? a.jabatan : 'Anggota';
     document.getElementById('agDivisi').value = a ? a.divisi : 'Odoo';
+    isiSelectAnggota(a ? a.kodeDosen : '', a ? a.kodeAsprak : '');
     const preview = document.getElementById('agFotoPreview');
     const wrapper = document.getElementById('agFotoWrapper');
     if (preview) { preview.style.display = 'none'; preview.src = ''; }
@@ -932,17 +1494,47 @@ function saveAnggota() {
     const nim = document.getElementById('agNim').value.trim();
     const jabatan = document.getElementById('agJabatan').value.trim();
     const divisi = document.getElementById('agDivisi').value.trim();
+    const selD = document.getElementById('agKodeDosen');
+    const selA = document.getElementById('agKodeAsprak');
+    const kodeDosen = selD ? selD.value : '';
+    const kodeAsprak = selA ? selA.value : '';
     if (!nama || !nim) { alert('Nama dan NIM harus diisi!'); return; }
-    const preview = document.getElementById('agFotoPreview');
+
+    // Cek NIM ganda (satu NIM = satu mahasiswa)
+    const nimBaru = normalizeNim(nim);
+    let bentrok = null;
+    Object.keys(data.generasi).forEach(function(k) {
+        const gen = data.generasi[k];
+        if (!gen || !Array.isArray(gen.anggota)) return;
+        gen.anggota.forEach(function(a, i) {
+            const sama = normalizeNim(a.nim) === nimBaru;
+            const diriSendiri = (k === genKey && String(i) === String(index));
+            if (sama && !diriSendiri) bentrok = a;
+        });
+    });
+    if (bentrok) { alert('NIM ' + nim + ' sudah dipakai oleh ' + bentrok.nama + '. Periksa kembali.'); return; }
+
     const foto = getUploadPreviewValue('agFotoPreview');
     if (index !== '') {
         const a = data.generasi[genKey]?.anggota[parseInt(index)];
-        if (a) { a.nama = nama; a.nim = nim; a.jabatan = jabatan || 'Anggota'; a.divisi = divisi || 'Odoo'; if (foto) a.foto = foto; }
+        if (a) {
+            a.nama = nama; a.nim = nim;
+            a.jabatan = jabatan || 'Anggota';
+            a.divisi = divisi || 'Odoo';
+            a.kodeDosen = kodeDosen;
+            a.kodeAsprak = kodeAsprak;
+            if (foto) a.foto = foto;
+        }
     } else {
         const sel = document.getElementById('adminGenSelect');
         const gk = sel ? sel.value : genKey;
         if (!data.generasi[gk]) return;
-        data.generasi[gk].anggota.push({ nama, nim, jabatan: jabatan || 'Anggota', divisi: divisi || 'Odoo', foto });
+        data.generasi[gk].anggota.push({
+            nama, nim,
+            jabatan: jabatan || 'Anggota',
+            divisi: divisi || 'Odoo',
+            kodeDosen, kodeAsprak, foto
+        });
     }
     saveData(data);
     closeModal('modalAnggota');
@@ -1599,83 +2191,53 @@ function renderAdminSettings() {
     const data = getData();
     const container = document.getElementById('adminContent');
     if (!container) return;
-    const pageLabels = {
-        beranda:'Beranda', dosen:'Dosen & Anggota', matakuliah:'Mata Kuliah',
-        kerjasama:'Kerjasama', berita:'Berita', sertifikat:'Sertifikat'
-    };
-    const pageIcons = {
-        beranda:'fas fa-home', dosen:'fas fa-chalkboard-teacher', matakuliah:'fas fa-book',
-        kerjasama:'fas fa-handshake', berita:'fas fa-newspaper', sertifikat:'fas fa-certificate'
-    };
-    const order = data.pageOrder || Object.keys(pageLabels);
-    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><h3 style="color:var(--navy);"><i class="fas fa-paint-brush"></i> Pengaturan Subjudul Halaman</h3><p style="color:var(--gray-500);font-size:0.875rem;">Drag & drop untuk urutan ulang halaman. Edit subjudul hero section setiap halaman website. Perubahan akan langsung tampil di frontend.</p></div>'+
-        '<div class="drag-sort-list" id="dragSortList">'+
-        order.map(key => '<div class="drag-sort-item" data-key="'+key+'" draggable="true"><div class="drag-handle"><i class="fas fa-grip-lines"></i></div><i class="'+pageIcons[key]+'" style="font-size:1.25rem;color:var(--blue);width:36px;text-align:center;"></i><div class="info"><strong>'+pageLabels[key]+'</strong><small id="settingPreview_'+key+'">'+(data.pageSettings[key]?.subtitle || '')+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalSetting(\''+key+'\')"><i class="fas fa-pen"></i></button></div></div>').join('')+
-        '</div>';
-    initDragSort();
-}
 
-function initDragSort() {
-    const list = document.getElementById('dragSortList');
-    if (!list) return;
-    let dragItem = null;
-    list.querySelectorAll('.drag-sort-item').forEach(item => {
-        item.addEventListener('dragstart', function(e) {
-            dragItem = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        });
-        item.addEventListener('dragend', function() {
-            this.classList.remove('dragging');
-            dragItem = null;
-            list.querySelectorAll('.drag-sort-item').forEach(i => i.classList.remove('drag-over'));
-        });
-        item.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            if (this !== dragItem) {
-                list.querySelectorAll('.drag-sort-item').forEach(i => i.classList.remove('drag-over'));
-                this.classList.add('drag-over');
-            }
-        });
-        item.addEventListener('dragleave', function() {
-            this.classList.remove('drag-over');
-        });
-        item.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
-            if (dragItem && this !== dragItem) {
-                const items = [...list.querySelectorAll('.drag-sort-item')];
-                const fromIdx = items.indexOf(dragItem);
-                const toIdx = items.indexOf(this);
-                if (fromIdx < toIdx) {
-                    this.parentNode.insertBefore(dragItem, this.nextSibling);
-                } else {
-                    this.parentNode.insertBefore(dragItem, this);
-                }
-                saveDragOrder();
-            }
-        });
-    });
-}
+    const halaman = [
+        { key: 'beranda',    label: 'Beranda',         icon: 'fas fa-home',               file: 'index.html' },
+        { key: 'dosen',      label: 'Dosen & Anggota', icon: 'fas fa-chalkboard-teacher', file: 'dosen-anggota.html' },
+        { key: 'matakuliah', label: 'Mata Kuliah',     icon: 'fas fa-book',               file: 'matakuliah.html' },
+        { key: 'kerjasama',  label: 'Kerjasama',       icon: 'fas fa-handshake',          file: 'kerjasama.html' },
+        { key: 'berita',     label: 'Berita',          icon: 'fas fa-newspaper',          file: 'berita.html' },
+        { key: 'sertifikat', label: 'Cek Sertifikat',  icon: 'fas fa-certificate',        file: 'sertifikat.html' }
+    ];
 
-function saveDragOrder() {
-    const list = document.getElementById('dragSortList');
-    if (!list) return;
-    const data = getData();
-    data.pageOrder = [...list.querySelectorAll('.drag-sort-item')].map(item => item.dataset.key);
-    saveData(data);
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;">'
+        + '<h3 style="color:var(--navy);"><i class="fas fa-paint-brush"></i> Pengaturan Halaman</h3>'
+        + '<p style="color:var(--gray-500);font-size:0.875rem;">Ubah subjudul (teks di bawah judul) pada bagian hero setiap halaman. '
+        + 'Klik <i class="fas fa-pen"></i> untuk mengedit, atau <i class="fas fa-external-link-alt"></i> untuk melihat halamannya.</p></div>'
+        + '<div class="admin-list">'
+        + halaman.map(function(h) {
+            const setting = (data.pageSettings && data.pageSettings[h.key]) || {};
+            const sub = setting.subtitle || '';
+            const ringkas = sub.length > 90 ? escapeHtml(sub.substring(0, 90)) + '...' : escapeHtml(sub);
+            const jumlahItem = (setting.dropdownItems || []).length;
+            return '<div class="admin-item">'
+                + '<i class="' + h.icon + '" style="font-size:1.25rem;color:var(--blue);width:36px;text-align:center;"></i>'
+                + '<div class="info"><strong>' + h.label + '</strong>'
+                + '<br><small>' + (sub ? ringkas : '(belum ada subjudul)') + '</small>'
+                + (jumlahItem ? '<br><small><i class="fas fa-list"></i> ' + jumlahItem + ' item dropdown pada hero</small>' : '')
+                + '</div>'
+                + '<div class="actions">'
+                + '<a class="btn btn-sm btn-secondary" href="' + h.file + '" target="_blank" rel="noopener" title="Lihat halaman"><i class="fas fa-external-link-alt"></i></a>'
+                + '<button class="btn btn-sm btn-warning" onclick="showModalSetting(\'' + h.key + '\')" title="Edit subjudul"><i class="fas fa-pen"></i></button>'
+                + '</div></div>';
+        }).join('')
+        + '</div>'
+        + '<p style="text-align:center;color:var(--gray-400);font-size:0.8125rem;margin-top:20px;">'
+        + '<i class="fas fa-info-circle"></i> Subjudul boleh memakai HTML sederhana, misalnya <code>&lt;br&gt;</code> atau <code>&lt;strong&gt;teks&lt;/strong&gt;</code>.</p>';
 }
 
 
 function showModalSetting(key) {
-    const data = getData();
+    const data = normalizeData(getData());
+    const setting = (data.pageSettings && data.pageSettings[key]) || {};
     document.getElementById('modalSettingTitle').textContent = 'Edit Subjudul Halaman';
     document.getElementById('stKey').value = key;
-    document.getElementById('stSubtitle').value = data.pageSettings[key]?.subtitle || '';
+    document.getElementById('stSubtitle').value = setting.subtitle || '';
     // Load dropdown items
     const container = document.getElementById('dropdownItemsContainer');
     if (container) {
-        const items = data.pageSettings[key]?.dropdownItems || [];
+        const items = setting.dropdownItems || [];
         if (items.length === 0) {
             container.innerHTML = '<p style="font-size:0.8125rem;color:var(--gray-400);">Belum ada item dropdown. Klik "Tambah Item" untuk menambahkan.</p>';
         } else {
@@ -1719,10 +2281,11 @@ function removeDropdownItemField(btn) {
 }
 
 function saveSetting() {
-    const data = getData();
+    const data = normalizeData(getData());
     const key = document.getElementById('stKey').value;
     const subtitle = document.getElementById('stSubtitle').value.trim();
-    if (!key || !subtitle) { alert('Subjudul harus diisi!'); return; }
+    if (!key) { alert('Halaman tidak dikenali. Tutup lalu buka ulang menu Pengaturan.'); return; }
+    if (!subtitle) { alert('Subjudul harus diisi!'); return; }
     if (!data.pageSettings[key]) data.pageSettings[key] = {};
     data.pageSettings[key].subtitle = subtitle;
     
@@ -1744,6 +2307,7 @@ function saveSetting() {
     saveData(data);
     closeModal('modalSetting');
     renderAdminContent();
+    erpifyToast('Subjudul halaman berhasil disimpan.', 'success');
 }
 
 
@@ -1778,6 +2342,7 @@ function renderAdminContent() {
         case 'dashboard': renderDashboard(); break;
         case 'platform': renderAdminPlatform(); break;
         case 'dosen': renderAdminDosen(); break;
+        case 'asprak': renderAdminAsprak(); break;
         case 'mitra': renderAdminMitra(); break;
         case 'anggota': renderAdminAnggota(); break;
         case 'berita': renderAdminBerita(); break;

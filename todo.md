@@ -50,6 +50,16 @@ ditambah Bagian 6 (backend dinamis untuk hosting Hostinger).
 - [x] 6.7 Dokumentasi deploy README-HOSTINGER.md + halaman uji api/selftest.php dan test-frontend.html
 - [x] 6.8 Wizard api/setup.php (isi database + uji koneksi + tulis config.php otomatis) dan pesan error konfigurasi yang jelas (menggantikan error SQL mentah)
 
+## Bagian 7: Permintaan Perubahan Lanjutan
+- [x] 7.1 Cek sertifikat memakai **NIM** (bukan kode unik); satu NIM bisa punya banyak sertifikat dan ditampilkan sebagai kartu terpisah
+- [x] 7.2 Tombol **Unduh Sertifikat** di samping tombol Lihat Sertifikat (PDF)
+- [x] 7.3 Upload foto kini lewat jendela **atur posisi/zoom (crop)** sebelum disimpan (dosen, anggota, sertifikat, cover berita)
+- [x] 7.4 Form mahasiswa: pilih **Dosen** & **Asprak** dengan tampilan **Kode - Nama** + menu Asprak baru di admin
+- [x] 7.5 Mitra: tambah **logo** per mitra (upload + tampil di halaman Kerjasama)
+- [x] 7.6 Info kontak: YouTube `@erpifyTelUJkt`, email `erpify.telujkt@gmail.com`, alamat Telkom University Jakarta, nomor telepon dihapus
+- [x] 7.7 Perbaikan menu **Pengaturan** admin (drag & drop yang tidak berfungsi diganti pengaturan subjudul yang benar-benar tersimpan)
+- [x] 7.8 Migrasi otomatis data lama (mitra teks -> objek, kode dosen, daftar asprak, field kode pembimbing)
+
 ## Catatan Teknis
 - Foto & PDF sertifikat disimpan sebagai URL file di server (folder `uploads/`), bukan lagi data URL di localStorage.
 - Bila `api/config.php` belum diisi, website otomatis jalan dalam mode statis (localStorage) - tidak error.

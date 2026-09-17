@@ -98,6 +98,7 @@ body { background: var(--admin-bg); }
 <button data-tab="dashboard" class="active" onclick="switchAdminTab('dashboard')"><i class="fas fa-chart-pie"></i> <span>Dashboard</span></button>
 <button data-tab="platform" onclick="switchAdminTab('platform')"><i class="fas fa-cubes"></i> <span>Platform</span></button>
 <button data-tab="dosen" onclick="switchAdminTab('dosen')"><i class="fas fa-chalkboard-teacher"></i> <span>Dosen</span></button>
+<button data-tab="asprak" onclick="switchAdminTab('asprak')"><i class="fas fa-user-graduate"></i> <span>Asprak</span></button>
 <button data-tab="anggota" onclick="switchAdminTab('anggota')"><i class="fas fa-users"></i> <span>Anggota</span></button>
 <button data-tab="generasi" onclick="switchAdminTab('generasi')"><i class="fas fa-layer-group"></i> <span>Generasi</span></button>
 <button data-tab="mitra" onclick="switchAdminTab('mitra')"><i class="fas fa-handshake"></i> <span>Mitra</span></button>
@@ -140,6 +141,9 @@ body { background: var(--admin-bg); }
 <div class="modal-header"><h3 id="modalDosenTitle">Tambah Dosen</h3><button class="modal-close" onclick="closeModal('modalDosen')"><i class="fas fa-times"></i></button></div>
 <div class="modal-body">
 <input type="hidden" id="dsId">
+<div class="form-group"><label>Kode Dosen <span style="color:red;">*</span></label><input type="text" id="dsKode" placeholder="Contoh: DSN-01">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Kode ini dipakai pada form mahasiswa (ditampilkan sebagai <strong>Kode - Nama</strong>). Terisi otomatis, boleh diubah.</p>
+</div>
 <div class="form-group"><label>Nama Lengkap</label><input type="text" id="dsNama" placeholder="Nama dosen"></div>
 <div class="form-group"><label>Jabatan</label><input type="text" id="dsJabatan" placeholder="Contoh: Kepala Lab"></div>
 <div class="form-group"><label>Keahlian</label><textarea id="dsKeahlian" rows="2" placeholder="Deskripsi keahlian..."></textarea></div>
@@ -166,6 +170,16 @@ body { background: var(--admin-bg); }
 <div class="modal-body">
 <input type="hidden" id="mtIndex">
 <div class="form-group"><label>Nama Perusahaan / Institusi</label><input type="text" id="mtName" placeholder="Nama mitra"></div>
+<div class="form-group">
+<label>Logo Mitra</label>
+<div class="upload-wrapper" id="mtLogoWrapper">
+<i class="fas fa-image"></i>
+<p>Klik untuk upload logo (disarankan PNG transparan)</p>
+<img id="mtLogoPreview" class="upload-preview" style="display:none;">
+<input type="file" id="mtLogoInput" accept="image/*" style="display:none;">
+</div>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Logo tampil pada kartu mitra di halaman Kerjasama sehingga lebih meyakinkan.</p>
+</div>
 <button class="btn btn-primary" onclick="saveMitra()"><i class="fas fa-save"></i> Simpan</button>
 <button class="btn btn-secondary" onclick="closeModal('modalMitra')">Batal</button>
 </div>
@@ -183,6 +197,14 @@ body { background: var(--admin-bg); }
 <div class="form-group"><label>NIM</label><input type="text" id="agNim" placeholder="Nomor induk mahasiswa"></div>
 <div class="form-group"><label>Jabatan</label><input type="text" id="agJabatan" placeholder="Ketua Lab / Anggota"></div>
 <div class="form-group"><label>Divisi</label><input type="text" id="agDivisi" placeholder="SAP / Odoo / ABAP"></div>
+<div class="form-group"><label>Dosen Pembimbing</label>
+<select id="agKodeDosen"></select>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Daftar diambil dari menu <strong>Dosen</strong> (format: Kode - Nama).</p>
+</div>
+<div class="form-group"><label>Asisten Praktikum (Asprak)</label>
+<select id="agKodeAsprak"></select>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Daftar diambil dari menu <strong>Asprak</strong>.</p>
+</div>
 <div class="form-group">
 <label>Foto Profil</label>
 <div class="upload-wrapper" id="agFotoWrapper">
@@ -260,6 +282,22 @@ body { background: var(--admin-bg); }
 <div class="form-group"><label>Deskripsi</label><textarea id="gnDesc" rows="3" placeholder="Deskripsi generasi..."></textarea></div>
 <button class="btn btn-primary" onclick="saveGenerasi()"><i class="fas fa-save"></i> Simpan</button>
 <button class="btn btn-secondary" onclick="closeModal('modalGenerasi')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL ASPRAK ===== -->
+<div class="modal-overlay" id="modalAsprak" onclick="if(event.target===this)closeModal('modalAsprak')">
+<div class="modal-content" style="max-width:480px;">
+<div class="modal-header"><h3 id="modalAsprakTitle">Tambah Asprak</h3><button class="modal-close" onclick="closeModal('modalAsprak')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="asIndex">
+<div class="form-group"><label>Kode Asprak <span style="color:red;">*</span></label><input type="text" id="asKode" placeholder="Contoh: ASP-01">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Ditampilkan pada form mahasiswa sebagai <strong>Kode - Nama</strong>.</p>
+</div>
+<div class="form-group"><label>Nama Asprak</label><input type="text" id="asNama" placeholder="Nama asisten praktikum"></div>
+<button class="btn btn-primary" onclick="saveAsprak()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalAsprak')">Batal</button>
 </div>
 </div>
 </div>
@@ -358,15 +396,36 @@ body { background: var(--admin-bg); }
 </div>
 </div>
 
+<!-- ===== MODAL ATUR POSISI FOTO (CROP) ===== -->
+<div class="modal-overlay" id="modalCrop" onclick="if(event.target===this)tutupCropModal()">
+<div class="modal-content" style="max-width:560px;">
+<div class="modal-header"><h3><i class="fas fa-crop-alt"></i> Atur Posisi Foto</h3><button class="modal-close" onclick="tutupCropModal()"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<p id="cropHint" style="font-size:0.8125rem;color:var(--gray-500);margin-bottom:12px;"></p>
+<div class="crop-area"><canvas id="cropCanvas" width="480" height="480"></canvas></div>
+<div class="crop-controls">
+<i class="fas fa-search-minus"></i>
+<input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1">
+<i class="fas fa-search-plus"></i>
+</div>
+<p style="font-size:0.75rem;color:var(--gray-400);margin:8px 0 16px;"><i class="fas fa-hand-pointer"></i> Geser foto dengan mouse/jari untuk mengatur posisi, lalu gunakan slider untuk zoom.</p>
+<button class="btn btn-primary" onclick="terapkanCrop()"><i class="fas fa-check"></i> Gunakan Foto Ini</button>
+<button class="btn btn-secondary" onclick="tutupCropModal()">Batal</button>
+</div>
+</div>
+</div>
+
 <script src="data.js"></script>
 <script>
 // ===== LOGIN CHECK (di server) + PEMUATAN DATA =====
 document.addEventListener('DOMContentLoaded', async function() {
-    // Handler upload: foto dosen/anggota/berita + PDF sertifikat
+    // Handler upload: foto dosen/anggota/berita + PDF sertifikat + logo mitra
     setupUpload('dsFotoInput', 'dsFotoPreview', 'dsFotoWrapper');
     setupUpload('agFotoInput', 'agFotoPreview', 'agFotoWrapper');
     setupUpload('brFotoInput', 'brFotoPreview', 'brFotoWrapper');
     setupUpload('srFotoInput', 'srFotoPreview', 'srFotoWrapper');
+    setupUpload('mtLogoInput', 'mtLogoPreview', 'mtLogoWrapper');
+    initCropCanvas();
 
     const status = await apiAuthStatus();
     let loggedIn = false;
