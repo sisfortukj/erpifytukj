@@ -13,7 +13,6 @@ const ERPIFY_UPLOAD_CATEGORY = {
     dsFotoInput: 'dosen',
     agFotoInput: 'anggota',
     brFotoInput: 'berita',
-    srFotoInput: 'sertifikat',
     mtLogoInput: 'mitra'
 };
 
@@ -187,11 +186,6 @@ function getDefaultData() {
             { id:2, kode:'DSN-02', nama:'Rina Wijaya, S.T., M.T.', jabatan:'Dosen Senior ERP', keahlian:'Spesialis ERP Accounting dan Supply Chain Management.', tags:['Accounting','SCM','Acumatica'], foto:'' },
             { id:3, kode:'DSN-03', nama:'Budi Santoso, S.Kom., M.Eng.', jabatan:'Dosen Teknis ERP', keahlian:'Pakar konfigurasi teknis dan pengembangan modul ERP.', tags:['ABAP','Python','Odoo Dev'], foto:'' }
         ],
-        asprak: [
-            { kode:'ASP-01', nama:'Fajar Nugroho' },
-            { kode:'ASP-02', nama:'Putri Ayu' },
-            { kode:'ASP-03', nama:'Adi Saputra' }
-        ],
         mitra: [
             { nama:'PT. Tech ERP Solusi', logo:'' },
             { nama:'PT. Digital Enterprise', logo:'' },
@@ -204,10 +198,10 @@ function getDefaultData() {
             gen1: { title:'Generasi 1 - Angkatan Perdana', desc:'Generasi pertama yang menjadi pionir Laboratorium ERPify.', anggota:[
                 { nama:'Ahmad Rizki', nim:'2201001', jabatan:'Ketua Lab', divisi:'SAP', kodeDosen:'DSN-01', kodeAsprak:'ASP-01', foto:'' },
                 { nama:'Siti Nurhaliza', nim:'2201002', jabatan:'Wakil Ketua', divisi:'Odoo', kodeDosen:'DSN-01', kodeAsprak:'ASP-02', foto:'' },
-                { nama:'Budi Prasetyo', nim:'2201003', jabatan:'Sekretaris', divisi:'Acumatica', kodeDosen:'DSN-02', kodeAsprak:'ASP-01', foto:'' },
-                { nama:'Dewi Lestari', nim:'2201004', jabatan:'Bendahara', divisi:'ABAP', kodeDosen:'DSN-02', kodeAsprak:'ASP-03', foto:'' },
-                { nama:'Rudi Hartono', nim:'2201005', jabatan:'Anggota', divisi:'SCM', kodeDosen:'DSN-03', kodeAsprak:'ASP-02', foto:'' },
-                { nama:'Ani Rahmawati', nim:'2201006', jabatan:'Anggota', divisi:'HR', kodeDosen:'DSN-03', kodeAsprak:'ASP-03', foto:'' }
+                { nama:'Budi Prasetyo', nim:'2201003', jabatan:'Sekretaris', divisi:'Acumatica', kodeDosen:'DSN-02', kodeAsprak:'ASP-03', foto:'' },
+                { nama:'Dewi Lestari', nim:'2201004', jabatan:'Bendahara', divisi:'ABAP', kodeDosen:'DSN-02', kodeAsprak:'ASP-04', foto:'' },
+                { nama:'Rudi Hartono', nim:'2201005', jabatan:'Anggota', divisi:'SCM', kodeDosen:'DSN-03', kodeAsprak:'ASP-05', foto:'' },
+                { nama:'Ani Rahmawati', nim:'2201006', jabatan:'Anggota', divisi:'HR', kodeDosen:'DSN-03', kodeAsprak:'ASP-06', foto:'' }
             ]},
             gen2: { title:'Generasi 2 - Angkatan Pengembangan', desc:'Generasi kedua yang melanjutkan pengembangan kompetensi ERP.', anggota:[
                 { nama:'Fajar Nugroho', nim:'2202001', jabatan:'Ketua Lab', divisi:'Odoo', foto:'' },
@@ -254,12 +248,12 @@ function getDefaultData() {
 
 
         sertifikatSAP: [
-            { nomor:'SAP-2026-0001', nama:'Ahmad Rizki', nim:'2201001', angkatan:'2022', kelas:'A', jenis:'SAP S/4HANA Associate', nilai:'A', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0002', nama:'Siti Nurhaliza', nim:'2201002', angkatan:'2022', kelas:'A', jenis:'SAP FI Associate', nilai:'A-', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0003', nama:'Budi Prasetyo', nim:'2201003', angkatan:'2022', kelas:'B', jenis:'SAP ABAP Professional', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0004', nama:'Dewi Lestari', nim:'2201004', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'A', status:'Belum Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0005', nama:'Rudi Hartono', nim:'2201005', angkatan:'2022', kelas:'B', jenis:'SAP SD Professional', nilai:'B', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' },
-            { nomor:'SAP-2026-0006', nama:'Ahmad Rizki', nim:'2201001', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' }
+            { nim:'2201001', nama:'Ahmad Rizki', angkatan:'2022', kelas:'A', jenis:'SAP S/4HANA Associate', nilai:'A', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', pdf:'' },
+            { nim:'2201001', nama:'Ahmad Rizki', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', pdf:'' },
+            { nim:'2201002', nama:'Siti Nurhaliza', angkatan:'2022', kelas:'A', jenis:'SAP FI Associate', nilai:'A-', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', pdf:'' },
+            { nim:'2201003', nama:'Budi Prasetyo', angkatan:'2022', kelas:'B', jenis:'SAP ABAP Professional', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', pdf:'' },
+            { nim:'2201004', nama:'Dewi Lestari', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'A', status:'Belum Bisa Diambil', diambil:'Belum Diambil', pdf:'' },
+            { nim:'2201005', nama:'Rudi Hartono', angkatan:'2022', kelas:'B', jenis:'SAP SD Professional', nilai:'B', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', pdf:'' }
         ],
 
 
@@ -281,8 +275,8 @@ function getDefaultData() {
 function normalizeData(data) {
     if (!data || typeof data !== 'object') return data;
 
-    // Daftar asprak (asisten praktikum)
-    if (!Array.isArray(data.asprak)) data.asprak = [];
+    // Asprak bukan lagi daftar terpisah (kode asprak melekat pada anggota)
+    if ('asprak' in data) delete data.asprak;
 
     // Dosen: pastikan setiap dosen punya kode
     if (Array.isArray(data.dosen)) {
@@ -302,16 +296,30 @@ function normalizeData(data) {
         });
     }
 
-    // Anggota: tambahkan kode dosen & kode asprak bila belum ada
+    // Anggota: lengkapi kode dosen pembimbing & kode asprak.
+    // Kode asprak melekat pada anggota dan wajib unik - duplikat diberi nomor baru.
     if (data.generasi) {
+        let urutAsprak = 0;
         Object.keys(data.generasi).forEach(function(k) {
             const gen = data.generasi[k];
-            if (gen && Array.isArray(gen.anggota)) {
-                gen.anggota.forEach(function(a) {
-                    if (typeof a.kodeDosen !== 'string') a.kodeDosen = '';
-                    if (typeof a.kodeAsprak !== 'string') a.kodeAsprak = '';
-                });
-            }
+            if (!gen || !Array.isArray(gen.anggota)) return;
+            gen.anggota.forEach(function(a) {
+                const m = /(\d+)\s*$/.exec(a.kodeAsprak || '');
+                if (m) urutAsprak = Math.max(urutAsprak, parseInt(m[1], 10));
+            });
+        });
+        const dipakai = {};
+        Object.keys(data.generasi).forEach(function(k) {
+            const gen = data.generasi[k];
+            if (!gen || !Array.isArray(gen.anggota)) return;
+            gen.anggota.forEach(function(a) {
+                if (typeof a.kodeDosen !== 'string') a.kodeDosen = '';
+                if (typeof a.kodeAsprak !== 'string' || a.kodeAsprak === '' || dipakai[a.kodeAsprak]) {
+                    urutAsprak++;
+                    a.kodeAsprak = 'ASP-' + String(urutAsprak).padStart(2, '0');
+                }
+                dipakai[a.kodeAsprak] = true;
+            });
         });
     }
 
@@ -321,26 +329,23 @@ function normalizeData(data) {
         if (!data.pageSettings[k]) data.pageSettings[k] = { subtitle: '' };
     });
 
-    // Sertifikat: pastikan punya field foto & pdf
+    // Sertifikat: acuan utama NIM, foto tidak dipakai lagi (sudah ada upload PDF)
     if (Array.isArray(data.sertifikatSAP)) {
         data.sertifikatSAP.forEach(function(s) {
-            if (typeof s.foto !== 'string') s.foto = '';
-            if (typeof s.pdf !== 'string') s.pdf = '';
+            if (typeof s.nim !== 'string') s.nim = '';
+            if (typeof s.nama !== 'string') s.nama = '';
+            if (typeof s.jenis !== 'string') s.jenis = '';
+            if ('foto' in s) delete s.foto;
         });
     }
 
     return data;
 }
 
-// ===== HELPER DOSEN / ASPRAK / MITRA =====
+// ===== HELPER DOSEN / MITRA =====
 function dosenLabel(d) {
     if (!d) return '';
     return (d.kode ? d.kode + ' - ' : '') + (d.nama || '');
-}
-
-function asprakLabel(a) {
-    if (!a) return '';
-    return (a.kode ? a.kode + ' - ' : '') + (a.nama || '');
 }
 
 function getDosenByKode(kode) {
@@ -349,13 +354,7 @@ function getDosenByKode(kode) {
     return (data.dosen || []).find(function(d) { return d.kode === kode; }) || null;
 }
 
-function getAsprakByKode(kode) {
-    if (!kode) return null;
-    const data = getData();
-    return (data.asprak || []).find(function(a) { return a.kode === kode; }) || null;
-}
-
-// Label "Kode - Nama" untuk data mahasiswa/anggota
+// Label "Kode - Nama" untuk dosen pembimbing mahasiswa
 function anggotaDosenLabel(a) {
     if (!a) return '';
     const d = getDosenByKode(a.kodeDosen);
@@ -363,11 +362,25 @@ function anggotaDosenLabel(a) {
     return a.kodeDosen || '';
 }
 
+// Kode asprak melekat pada mahasiswa (anggota laboratorium)
 function anggotaAsprakLabel(a) {
     if (!a) return '';
-    const s = getAsprakByKode(a.kodeAsprak);
-    if (s) return asprakLabel(s);
     return a.kodeAsprak || '';
+}
+
+// Kode anggota berikutnya (kode asprak melekat pada anggota)
+function generateKodeAsprak() {
+    const data = getData();
+    let max = 0;
+    Object.keys(data.generasi || {}).forEach(function(k) {
+        const gen = data.generasi[k];
+        if (!gen || !Array.isArray(gen.anggota)) return;
+        gen.anggota.forEach(function(a) {
+            const m = /(\d+)\s*$/.exec(a.kodeAsprak || '');
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+        });
+    });
+    return 'ASP-' + String(max + 1).padStart(2, '0');
 }
 
 // Kode otomatis untuk dosen & asprak (bisa diubah manual oleh admin)
@@ -381,16 +394,6 @@ function generateKodeDosen() {
     return 'DSN-' + String(max + 1).padStart(2, '0');
 }
 
-function generateKodeAsprak() {
-    const data = getData();
-    let max = 0;
-    (data.asprak || []).forEach(function(a) {
-        const m = /(\d+)\s*$/.exec(a.kode || '');
-        if (m) max = Math.max(max, parseInt(m[1], 10));
-    });
-    return 'ASP-' + String(max + 1).padStart(2, '0');
-}
-
 // Susun <option> untuk daftar berkode (ditampilkan sebagai "Kode - Nama")
 function opsiKodeNama(daftar, kodeTerpilih, fnLabel) {
     let html = '<option value="">-- Belum dipilih --</option>';
@@ -401,13 +404,13 @@ function opsiKodeNama(daftar, kodeTerpilih, fnLabel) {
     return html;
 }
 
-// Isi dropdown dosen & asprak pada form anggota
+// Isi dropdown dosen & kolom kode asprak pada form anggota
 function isiSelectAnggota(kodeDosen, kodeAsprak) {
     const data = getData();
     const selDosen = document.getElementById('agKodeDosen');
-    const selAsprak = document.getElementById('agKodeAsprak');
     if (selDosen) selDosen.innerHTML = opsiKodeNama(data.dosen, kodeDosen || '', dosenLabel);
-    if (selAsprak) selAsprak.innerHTML = opsiKodeNama(data.asprak, kodeAsprak || '', asprakLabel);
+    const inputAsprak = document.getElementById('agKodeAsprak');
+    if (inputAsprak) inputAsprak.value = kodeAsprak || generateKodeAsprak();
 }
 
 // Mitra bisa berupa teks (data lama) atau objek { nama, logo }
@@ -712,7 +715,7 @@ function kartuSertifikat(s) {
     return '<div class="sertifikat-card">'
         + '<div class="sertifikat-card-head">'
         + '<i class="fas fa-certificate"></i>'
-        + '<div class="sertifikat-card-title"><h5>' + escapeHtml(s.jenis) + '</h5><span class="sertif-kode">' + escapeHtml(s.nomor) + '</span></div>'
+        + '<div class="sertifikat-card-title"><h5>' + escapeHtml(s.jenis) + '</h5></div>'
         + '<span class="sertif-nilai">' + escapeHtml(s.nilai || '-') + '</span>'
         + '</div>'
         + '<div class="sertifikat-card-body">'
@@ -723,7 +726,6 @@ function kartuSertifikat(s) {
         + barisInfoSertifikat('Status Kelayakan', badgeKelayakan)
         + barisInfoSertifikat('Status Pengambilan', badgeDiambil)
         + '</div>'
-        + (s.foto ? '<div class="sertifikat-foto-wrap"><img src="' + s.foto + '" alt="Foto sertifikat ' + escapeHtml(s.nomor) + '"></div>' : '')
         + pembayaran
         + '<div class="sertifikat-actions" style="display:none;">'
         + '<a class="btn btn-primary" href="' + pdfUrl + '" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Lihat Sertifikat</a>'
@@ -805,12 +807,13 @@ function cekSertifikat() {
 // ===== FILE PDF SERTIFIKAT =====
 const SERTIFIKAT_PDF_DIR = 'sertifikat/';
 
-// URL PDF sertifikat: pakai field 'pdf' bila diisi admin,
-// jika kosong otomatis memakai konvensi sertifikat/<KODE>.pdf
+// URL PDF sertifikat: pakai file hasil upload admin.
+// Data lama yang masih punya kode sertifikasi memakai cadangan sertifikat/<KODE>.pdf
 function getSertifikatPdfUrl(sertifikat) {
-    if (!sertifikat || !sertifikat.nomor) return '';
+    if (!sertifikat) return '';
     if (sertifikat.pdf) return sertifikat.pdf;
-    return SERTIFIKAT_PDF_DIR + sertifikat.nomor + '.pdf';
+    if (sertifikat.nomor) return SERTIFIKAT_PDF_DIR + sertifikat.nomor + '.pdf';
+    return '';
 }
 
 
@@ -984,7 +987,6 @@ function setupUpload(inputId, previewId, wrapperId) {
 const ERPIFY_CROP_INFO = {
     dsFotoInput: { rasio: 1, lebar: 600, tinggi: 600, label: 'Foto profil dosen (1:1)' },
     agFotoInput: { rasio: 1, lebar: 600, tinggi: 600, label: 'Foto profil anggota (1:1)' },
-    srFotoInput: { rasio: 4 / 3, lebar: 900, tinggi: 675, label: 'Foto / scan sertifikat (4:3)' },
     brFotoInput: { rasio: 16 / 9, lebar: 1024, tinggi: 576, label: 'Gambar cover berita (16:9)' }
 };
 
@@ -1309,61 +1311,6 @@ function deleteDosen(id) {
     if (!confirm('Hapus dosen ini?')) return;
     const data = getData();
     data.dosen = data.dosen.filter(d => d.id !== id);
-    saveData(data);
-    renderAdminContent();
-}
-
-// ===== ADMIN ASPRAK (asisten praktikum) =====
-function renderAdminAsprak() {
-    const data = getData();
-    const container = document.getElementById('adminContent');
-    if (!container) return;
-    const daftar = data.asprak || [];
-    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalAsprak()"><i class="fas fa-plus"></i> Tambah Asprak</button></div>'
-        + '<div class="admin-list">'
-        + daftar.map(function(a, i) {
-            return '<div class="admin-item"><div style="width:40px;height:40px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">' + escapeHtml((a.nama || '?').charAt(0)) + '</div>'
-                + '<div class="info"><strong>' + escapeHtml(asprakLabel(a)) + '</strong><br><small>Asisten praktikum</small></div>'
-                + '<div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAsprak(' + i + ')"><i class="fas fa-pen"></i></button>'
-                + '<button class="btn btn-sm btn-danger" onclick="deleteAsprak(' + i + ')"><i class="fas fa-trash"></i></button></div></div>';
-        }).join('')
-        + (daftar.length === 0 ? '<p style="text-align:center;color:var(--gray-400);padding:20px;">Belum ada data asprak.</p>' : '')
-        + '</div>';
-}
-
-function showModalAsprak(index) {
-    const data = getData();
-    const a = (index !== undefined && index !== null && index >= 0) ? (data.asprak || [])[index] : null;
-    document.getElementById('modalAsprakTitle').textContent = a ? 'Edit Asprak' : 'Tambah Asprak Baru';
-    document.getElementById('asIndex').value = a ? index : '';
-    document.getElementById('asKode').value = a ? a.kode : generateKodeAsprak();
-    document.getElementById('asNama').value = a ? a.nama : '';
-    openModal('modalAsprak');
-}
-
-function saveAsprak() {
-    const data = getData();
-    if (!Array.isArray(data.asprak)) data.asprak = [];
-    const index = document.getElementById('asIndex').value;
-    const kode = document.getElementById('asKode').value.trim() || generateKodeAsprak();
-    const nama = document.getElementById('asNama').value.trim();
-    if (!nama) { alert('Nama asprak harus diisi!'); return; }
-    const bentrok = data.asprak.find(function(a, i) { return a.kode === kode && String(i) !== String(index); });
-    if (bentrok) { alert('Kode asprak "' + kode + '" sudah dipakai oleh ' + bentrok.nama + '. Gunakan kode lain.'); return; }
-    if (index !== '') {
-        data.asprak[parseInt(index)] = { kode: kode, nama: nama };
-    } else {
-        data.asprak.push({ kode: kode, nama: nama });
-    }
-    saveData(data);
-    closeModal('modalAsprak');
-    renderAdminContent();
-}
-
-function deleteAsprak(index) {
-    if (!confirm('Hapus asprak ini?')) return;
-    const data = getData();
-    (data.asprak || []).splice(index, 1);
     saveData(data);
     renderAdminContent();
 }
@@ -1705,71 +1652,109 @@ function renderAdminSertifikasi() {
     const data = getData();
     const container = document.getElementById('adminContent');
     if (!container) return;
-    
-    // Ambil nilai filter dari session atau default
+
     const searchVal = sessionStorage.getItem('erpify_sertifikat_search') || '';
     const filterStatus = sessionStorage.getItem('erpify_sertifikat_status') || '';
     const filterDiambil = sessionStorage.getItem('erpify_sertifikat_diambil') || '';
     const filterAngkatan = sessionStorage.getItem('erpify_sertifikat_angkatan') || '';
-    
-    // Kumpulkan angkatan unik untuk filter dropdown
-    const angkatanSet = [...new Set(data.sertifikatSAP.map(s => s.angkatan).filter(Boolean))].sort();
-    
-    // Filter data
-    let filtered = data.sertifikatSAP;
+
+    const semua = data.sertifikatSAP || [];
+    const angkatanSet = [...new Set(semua.map(s => s.angkatan).filter(Boolean))].sort();
+
+    let filtered = semua;
     if (searchVal) {
         const q = searchVal.toLowerCase();
-        filtered = filtered.filter(s => 
-            s.nama.toLowerCase().includes(q) || 
-            s.nim.toLowerCase().includes(q) || 
-            s.nomor.toLowerCase().includes(q) ||
-            s.jenis.toLowerCase().includes(q)
-        );
+        filtered = filtered.filter(function(s) {
+            return (s.nama || '').toLowerCase().indexOf(q) > -1
+                || (s.nim || '').toLowerCase().indexOf(q) > -1
+                || (s.jenis || '').toLowerCase().indexOf(q) > -1;
+        });
     }
-    if (filterStatus) {
-        filtered = filtered.filter(s => s.status === filterStatus);
-    }
-    if (filterDiambil) {
-        filtered = filtered.filter(s => (s.diambil || 'Belum Diambil') === filterDiambil);
-    }
-    if (filterAngkatan) {
-        filtered = filtered.filter(s => s.angkatan === filterAngkatan);
-    }
-    
-    container.innerHTML = '<div class="table-actions"><button class="btn btn-success btn-sm" onclick="showModalSertifikasi()"><i class="fas fa-plus"></i> Tambah Data</button>'+
-        '<button class="btn btn-primary btn-sm" onclick="showImportModal()"><i class="fas fa-file-import"></i> Import CSV</button>'+
-        '<button class="btn btn-warning btn-sm" onclick="exportSertifikatCSV()"><i class="fas fa-file-export"></i> Export CSV</button>'+
-        '<button class="btn btn-success btn-sm" onclick="exportSertifikatExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>'+
-        '<span style="margin-left:auto;font-size:0.8125rem;color:var(--gray-400);">Total: '+filtered.length+'/'+data.sertifikatSAP.length+' sertifikat</span></div>'+
-        
-        // ===== FILTER & SEARCH BAR =====
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;background:var(--white);padding:16px;border-radius:12px;border:1px solid var(--gray-200);">'+
-        '<div style="flex:1;min-width:200px;position:relative;">'+
-        '<i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:0.875rem;"></i>'+
-        '<input type="text" id="sertifikatSearch" placeholder="Cari nama / NIM / kode / jenis..." value="'+searchVal+'" style="padding:10px 14px 10px 38px;border:1px solid var(--gray-300);border-radius:8px;width:100%;font-family:inherit;font-size:0.875rem;" oninput="filterSertifikatTable()">'+
-        '</div>'+
-        '<select id="filterSertifikatStatus" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'+
-        '<option value="">Semua Status Kelayakan</option>'+
-        '<option value="Sudah Bisa Diambil"'+(filterStatus==='Sudah Bisa Diambil'?' selected':'')+'>Sudah Bisa Diambil</option>'+
-        '<option value="Belum Bisa Diambil"'+(filterStatus==='Belum Bisa Diambil'?' selected':'')+'>Belum Bisa Diambil</option>'+
-        '</select>'+
-        '<select id="filterSertifikatDiambil" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'+
-        '<option value="">Semua Status Pengambilan</option>'+
-        '<option value="Sudah Diambil"'+(filterDiambil==='Sudah Diambil'?' selected':'')+'>Sudah Diambil</option>'+
-        '<option value="Belum Diambil"'+(filterDiambil==='Belum Diambil'?' selected':'')+'>Belum Diambil</option>'+
-        '</select>'+
-        '<select id="filterSertifikatAngkatan" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:140px;" onchange="filterSertifikatTable()">'+
-        '<option value="">Semua Angkatan</option>'+
-        angkatanSet.map(a => '<option value="'+a+'"'+(filterAngkatan===a?' selected':'')+'>'+a+'</option>').join('')+
-        '</select>'+
-        '<button class="btn btn-sm btn-secondary" onclick="resetFilterSertifikat()"><i class="fas fa-undo"></i> Reset</button>'+
-        '</div>'+
-        
-        '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Foto</th><th>Kode Sertifikasi</th><th>Nama Mahasiswa</th><th>NIM</th><th>Angkatan</th><th>Kelas</th><th>Jenis Sertifikasi</th><th>Nilai</th><th>Status Kelayakan</th><th>Status Pengambilan</th><th>Aksi</th></tr></thead><tbody id="sertifikatTableBody">'+
-        filtered.map((s, i) => '<tr><td>'+(s.foto?'<img src="'+s.foto+'" class="table-thumb" alt="Foto '+s.nomor+'">':'<span style="color:var(--gray-400);font-size:0.75rem;">-</span>')+'</td><td><strong>'+s.nomor+'</strong>'+(s.pdf?' <a href="'+s.pdf+'" target="_blank" rel="noopener" title="Buka file PDF"><i class="fas fa-file-pdf" style="color:#dc2626;"></i></a>':'')+'</td><td>'+s.nama+'</td><td>'+s.nim+'</td><td>'+s.angkatan+'</td><td>'+(s.kelas||'-')+'</td><td>'+s.jenis+'</td><td>'+s.nilai+'</td><td><span class="status-badge '+(s.status==='Sudah Bisa Diambil'?'success':'warning')+'">'+s.status+'</span></td><td><span class="status-badge '+(s.diambil==='Sudah Diambil'?'success':'warning')+'">'+(s.diambil||'Belum Diambil')+'</span></td><td><button class="btn btn-sm btn-warning" onclick="showModalSertifikasi('+data.sertifikatSAP.indexOf(s)+')"><i class="fas fa-pen"></i></button> <button class="btn btn-sm btn-danger" onclick="deleteSertifikasi('+data.sertifikatSAP.indexOf(s)+')"><i class="fas fa-trash"></i></button></td></tr>').join('')+
+    if (filterStatus) filtered = filtered.filter(s => s.status === filterStatus);
+    if (filterDiambil) filtered = filtered.filter(s => (s.diambil || 'Belum Diambil') === filterDiambil);
+    if (filterAngkatan) filtered = filtered.filter(s => s.angkatan === filterAngkatan);
 
-        '</tbody></table></div>'+
-        (filtered.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;"></i>Tidak ada data sertifikat yang cocok dengan filter.</div>' : '');
+    // Kelompokkan data per mahasiswa (berdasarkan NIM)
+    const mahasiswa = [];
+    const peta = {};
+    filtered.forEach(function(s) {
+        const kunci = normalizeNim(s.nim) || ('tanpa-nim-' + (s.nama || ''));
+        if (!peta[kunci]) {
+            peta[kunci] = { nim: s.nim || '-', nama: s.nama || '-', angkatan: s.angkatan || '', kelas: s.kelas || '', daftar: [] };
+            mahasiswa.push(peta[kunci]);
+        }
+        const grp = peta[kunci];
+        if (grp.nama === '-' && s.nama) grp.nama = s.nama;
+        if (!grp.angkatan && s.angkatan) grp.angkatan = s.angkatan;
+        if (!grp.kelas && s.kelas) grp.kelas = s.kelas;
+        grp.daftar.push(s);
+    });
+
+    container.innerHTML = '<div class="table-actions">'
+        + '<button class="btn btn-success btn-sm" onclick="showModalSertifikasi()"><i class="fas fa-plus"></i> Tambah Data Sertifikasi</button>'
+        + '<button class="btn btn-primary btn-sm" onclick="showImportModal()"><i class="fas fa-file-import"></i> Import CSV</button>'
+        + '<button class="btn btn-warning btn-sm" onclick="exportSertifikatCSV()"><i class="fas fa-file-export"></i> Export CSV</button>'
+        + '<button class="btn btn-success btn-sm" onclick="exportSertifikatExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>'
+        + '<span style="margin-left:auto;font-size:0.8125rem;color:var(--gray-400);">'
+        + mahasiswa.length + ' mahasiswa &middot; ' + filtered.length + ' sertifikat</span></div>'
+
+        + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;background:var(--white);padding:16px;border-radius:12px;border:1px solid var(--gray-200);">'
+        + '<div style="flex:1;min-width:200px;position:relative;">'
+        + '<i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:0.875rem;"></i>'
+        + '<input type="text" id="sertifikatSearch" placeholder="Cari NIM / nama mahasiswa / nama sertifikat..." value="' + escapeHtml(searchVal) + '" style="padding:10px 14px 10px 38px;border:1px solid var(--gray-300);border-radius:8px;width:100%;font-family:inherit;font-size:0.875rem;" oninput="filterSertifikatTable()">'
+        + '</div>'
+        + '<select id="filterSertifikatStatus" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'
+        + '<option value="">Semua Status Kelayakan</option>'
+        + '<option value="Sudah Bisa Diambil"' + (filterStatus === 'Sudah Bisa Diambil' ? ' selected' : '') + '>Sudah Bisa Diambil</option>'
+        + '<option value="Belum Bisa Diambil"' + (filterStatus === 'Belum Bisa Diambil' ? ' selected' : '') + '>Belum Bisa Diambil</option>'
+        + '</select>'
+        + '<select id="filterSertifikatDiambil" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'
+        + '<option value="">Semua Status Pengambilan</option>'
+        + '<option value="Sudah Diambil"' + (filterDiambil === 'Sudah Diambil' ? ' selected' : '') + '>Sudah Diambil</option>'
+        + '<option value="Belum Diambil"' + (filterDiambil === 'Belum Diambil' ? ' selected' : '') + '>Belum Diambil</option>'
+        + '</select>'
+        + '<select id="filterSertifikatAngkatan" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:140px;" onchange="filterSertifikatTable()">'
+        + '<option value="">Semua Angkatan</option>'
+        + angkatanSet.map(a => '<option value="' + escapeHtml(a) + '"' + (filterAngkatan === a ? ' selected' : '') + '>' + escapeHtml(a) + '</option>').join('')
+        + '</select>'
+        + '<button class="btn btn-sm btn-secondary" onclick="resetFilterSertifikat()"><i class="fas fa-undo"></i> Reset</button>'
+        + '</div>'
+        // ===== DAFTAR MAHASISWA + SERTIFIKATNYA =====
+        + '<div class="sertif-admin-list">'
+        + mahasiswa.map(function(m) {
+            const nimAman = escapeHtml(m.nim).replace(/'/g, '&#39;');
+            return '<div class="sertif-admin-card">'
+                + '<div class="sertif-admin-head">'
+                + '<div class="sertif-admin-info">'
+                + '<strong><i class="fas fa-user-graduate"></i> ' + escapeHtml(m.nim) + ' - ' + escapeHtml(m.nama) + '</strong>'
+                + '<small>' + (m.angkatan ? 'Angkatan ' + escapeHtml(m.angkatan) : 'Angkatan -')
+                + (m.kelas ? ' &middot; Kelas ' + escapeHtml(m.kelas) : '')
+                + ' &middot; ' + m.daftar.length + ' sertifikat</small>'
+                + '</div>'
+                + '<button class="btn btn-success btn-sm" onclick="showModalSertifikasi(\'\', \'' + nimAman + '\')" title="Tambah sertifikat untuk NIM ini"><i class="fas fa-plus"></i> Tambah Sertifikat</button>'
+                + '</div>'
+                + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
+                + '<th>Nama Sertifikat</th><th>Nilai</th><th>Status Kelayakan</th><th>Status Pengambilan</th><th>File PDF</th><th>Aksi</th>'
+                + '</tr></thead><tbody>'
+                + m.daftar.map(function(s) {
+                    const idx = data.sertifikatSAP.indexOf(s);
+                    const pdfUrl = getSertifikatPdfUrl(s);
+                    return '<tr>'
+                        + '<td><strong>' + escapeHtml(s.jenis || '-') + '</strong></td>'
+                        + '<td>' + escapeHtml(s.nilai || '-') + '</td>'
+                        + '<td><span class="status-badge ' + (s.status === 'Sudah Bisa Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.status || '-') + '</span></td>'
+                        + '<td><span class="status-badge ' + (s.diambil === 'Sudah Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.diambil || 'Belum Diambil') + '</span></td>'
+                        + '<td>' + (pdfUrl ? '<a href="' + pdfUrl + '" target="_blank" rel="noopener" title="Buka file PDF"><i class="fas fa-file-pdf" style="color:#dc2626;font-size:1.1rem;"></i></a>' : '<span style="color:var(--gray-400);font-size:0.75rem;">belum ada</span>') + '</td>'
+                        + '<td style="white-space:nowrap;">'
+                        + '<button class="btn btn-sm btn-warning" onclick="showModalSertifikasi(' + idx + ')" title="Edit"><i class="fas fa-pen"></i></button> '
+                        + '<button class="btn btn-sm btn-danger" onclick="deleteSertifikasi(' + idx + ')" title="Hapus"><i class="fas fa-trash"></i></button>'
+                        + '</td></tr>';
+                }).join('')
+                + '</tbody></table></div>'
+                + '</div>';
+        }).join('')
+        + '</div>'
+        + (mahasiswa.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;"></i>Belum ada data sertifikasi yang cocok.</div>' : '');
 }
 
 function filterSertifikatTable() {
@@ -1777,12 +1762,12 @@ function filterSertifikatTable() {
     const status = document.getElementById('filterSertifikatStatus')?.value || '';
     const diambil = document.getElementById('filterSertifikatDiambil')?.value || '';
     const angkatan = document.getElementById('filterSertifikatAngkatan')?.value || '';
-    
+
     sessionStorage.setItem('erpify_sertifikat_search', search);
     sessionStorage.setItem('erpify_sertifikat_status', status);
     sessionStorage.setItem('erpify_sertifikat_diambil', diambil);
     sessionStorage.setItem('erpify_sertifikat_angkatan', angkatan);
-    
+
     renderAdminSertifikasi();
 }
 
@@ -1794,104 +1779,127 @@ function resetFilterSertifikat() {
     renderAdminSertifikasi();
 }
 
-
-function generateKodeSertifikat() {
+// Buka form sertifikasi.
+//   - index : index data yang mau diedit (kosongkan untuk data baru)
+//   - nimPreset : kalau diisi, form otomatis terisi data mahasiswa NIM tersebut
+//     (dipakai tombol "Tambah Sertifikat" pada kartu mahasiswa)
+function showModalSertifikasi(index, nimPreset) {
     const data = getData();
-    const existing = data.sertifikatSAP.map(s => parseInt(s.nomor.split('-')[2]) || 0);
-    const maxNum = existing.length > 0 ? Math.max(...existing) : 0;
-    const nextNum = String(maxNum + 1).padStart(4, '0');
-    return 'SAP-2026-'+nextNum;
-}
+    const punyaIndex = (index !== undefined && index !== null && index !== '' && index >= 0);
+    const s = punyaIndex ? data.sertifikatSAP[index] : null;
 
-function showModalSertifikasi(index) {
-    const data = getData();
-    const s = (index !== undefined && index !== null && index >= 0) ? data.sertifikatSAP[index] : null;
-    document.getElementById('modalSertifikasiTitle').textContent = s ? 'Edit Data Sertifikasi' : 'Tambah Data Sertifikasi Baru';
-    document.getElementById('srIndex').value = (s ? index : '');
-    document.getElementById('srNomor').value = s ? s.nomor : generateKodeSertifikat();
-    document.getElementById('srNomor').readOnly = true;
-    document.getElementById('srNama').value = s ? s.nama : '';
-    document.getElementById('srNim').value = s ? s.nim : '';
-    document.getElementById('srAngkatan').value = s ? s.angkatan : '';
-    document.getElementById('srKelas').value = s ? (s.kelas || '') : '';
-    document.getElementById('srJenis').value = s ? s.jenis : '';
-    document.getElementById('srNilai').value = s ? s.nilai : '';
-    document.getElementById('srStatus').value = s ? s.status : 'Belum Bisa Diambil';
+    let nim = s ? (s.nim || '') : (nimPreset || '');
+    let nama = s ? (s.nama || '') : '';
+    let angkatan = s ? (s.angkatan || '') : '';
+    let kelas = s ? (s.kelas || '') : '';
+
+    // Ambil identitas mahasiswa dari sertifikat lain dengan NIM yang sama
+    if (!s && nimPreset) {
+        const lain = data.sertifikatSAP.find(x => normalizeNim(x.nim) === normalizeNim(nimPreset));
+        if (lain) {
+            nim = lain.nim || nim;
+            nama = lain.nama || '';
+            angkatan = lain.angkatan || '';
+            kelas = lain.kelas || '';
+        }
+    }
+
+    document.getElementById('modalSertifikasiTitle').textContent = s
+        ? 'Edit Sertifikat'
+        : (nimPreset ? 'Tambah Sertifikat - NIM ' + nim : 'Tambah Data Sertifikasi');
+    document.getElementById('srIndex').value = punyaIndex ? index : '';
+    document.getElementById('srNim').value = nim;
+    document.getElementById('srNama').value = nama;
+    document.getElementById('srAngkatan').value = angkatan;
+    document.getElementById('srKelas').value = kelas;
+    document.getElementById('srJenis').value = s ? (s.jenis || '') : '';
+    document.getElementById('srNilai').value = s ? (s.nilai || '') : '';
+    document.getElementById('srStatus').value = s ? (s.status || 'Belum Bisa Diambil') : 'Belum Bisa Diambil';
     document.getElementById('srDiambil').value = s ? (s.diambil || 'Belum Diambil') : 'Belum Diambil';
-    // Link / file PDF sertifikat
+
+    // File PDF sertifikat
     const pdfField = document.getElementById('srPdf');
     if (pdfField) pdfField.value = s ? (s.pdf || '') : '';
     const pdfFileField = document.getElementById('srPdfFile');
     if (pdfFileField) pdfFileField.value = '';
     const pdfStatusField = document.getElementById('srPdfStatus');
     if (pdfStatusField) pdfStatusField.innerHTML = '';
-    // Reset / isi preview foto sertifikat
-    const fotoPreview = document.getElementById('srFotoPreview');
-    const fotoWrapper = document.getElementById('srFotoWrapper');
-    if (fotoPreview) {
-        const icon = fotoWrapper ? fotoWrapper.querySelector('i') : null;
-        const hint = fotoWrapper ? fotoWrapper.querySelector('p') : null;
-        if (s && s.foto) {
-            fotoPreview.src = s.foto;
-            fotoPreview.style.display = 'block';
-            if (fotoWrapper) fotoWrapper.classList.add('has-image');
-            if (icon) icon.style.display = 'none';
-            if (hint) hint.style.display = 'none';
-        } else {
-            fotoPreview.src = '';
-            fotoPreview.style.display = 'none';
-            if (fotoWrapper) fotoWrapper.classList.remove('has-image');
-            if (icon) icon.style.display = '';
-            if (hint) hint.style.display = '';
-        }
-    }
+
     openModal('modalSertifikasi');
 }
 
+// Simpan data sertifikasi. NIM + Nama Sertifikat adalah acuan utama,
+// sehingga satu NIM boleh punya banyak sertifikat.
 function saveSertifikasi() {
     const data = getData();
     const index = document.getElementById('srIndex').value;
-    const nomor = document.getElementById('srNomor').value.trim();
-    const nama = document.getElementById('srNama').value.trim();
     const nim = document.getElementById('srNim').value.trim();
+    const nama = document.getElementById('srNama').value.trim();
     const angkatan = document.getElementById('srAngkatan').value.trim();
     const kelas = document.getElementById('srKelas').value.trim();
     const jenis = document.getElementById('srJenis').value.trim();
     const nilai = document.getElementById('srNilai').value.trim();
     const status = document.getElementById('srStatus').value;
     const diambil = document.getElementById('srDiambil').value;
-    if (!nama || !nim || !nomor) { alert('Nama, NIM, dan Kode Sertifikat harus diisi!'); return; }
+
+    if (!nim) { alert('NIM harus diisi - NIM adalah acuan utama pencarian sertifikat.'); return; }
+    if (!nama) { alert('Nama mahasiswa harus diisi!'); return; }
+    if (!jenis) { alert('Nama sertifikat harus diisi!'); return; }
+
     const pdfField = document.getElementById('srPdf');
     const pdf = pdfField ? pdfField.value.trim() : '';
-    const fotoPreview = document.getElementById('srFotoPreview');
-    const fotoBaru = getUploadPreviewValue('srFotoPreview');
+
+    if (!Array.isArray(data.sertifikatSAP)) data.sertifikatSAP = [];
+
     if (index !== '') {
         const s = data.sertifikatSAP[parseInt(index)];
-        if (s) { s.nomor = nomor; s.nama = nama; s.nim = nim; s.angkatan = angkatan; s.kelas = kelas; s.jenis = jenis; s.nilai = nilai; s.status = status; s.diambil = diambil; s.pdf = pdf; if (fotoBaru) s.foto = fotoBaru; }
+        if (s) {
+            s.nim = nim;
+            s.nama = nama;
+            s.angkatan = angkatan;
+            s.kelas = kelas;
+            s.jenis = jenis;
+            s.nilai = nilai;
+            s.status = status;
+            s.diambil = diambil;
+            s.pdf = pdf;
+        }
     } else {
-        data.sertifikatSAP.push({ nomor, nama, nim, angkatan, kelas, jenis, nilai, status, diambil, foto: fotoBaru, pdf: pdf });
+        data.sertifikatSAP.push({
+            nim: nim,
+            nama: nama,
+            angkatan: angkatan,
+            kelas: kelas,
+            jenis: jenis,
+            nilai: nilai,
+            status: status,
+            diambil: diambil,
+            pdf: pdf
+        });
     }
+
     saveData(data);
     closeModal('modalSertifikasi');
     renderAdminContent();
+    erpifyToast('Data sertifikasi berhasil disimpan.', 'success');
 }
 
-
-
 function deleteSertifikasi(index) {
-    if (!confirm('Hapus data sertifikasi ini?')) return;
+    if (!confirm('Hapus sertifikat ini? Sertifikat lain milik mahasiswa tersebut tidak terpengaruh.')) return;
     const data = getData();
     data.sertifikatSAP.splice(index, 1);
     saveData(data);
     renderAdminContent();
+    erpifyToast('Satu sertifikat dihapus.', 'success');
 }
 
 function downloadTemplateSertifikat() {
-    // Template TANPA kode sertifikat (akan digenerate otomatis)
-    const headers = ['Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
+    // Template: NIM menjadi kolom pertama (acuan utama)
+    const headers = ['NIM','Nama Mahasiswa','Angkatan','Kelas','Nama Sertifikat','Nilai','Status Kelayakan','Status Pengambilan'];
     const contoh = [
-        ['Contoh Mahasiswa 1','2203001','2023','A','SAP S/4HANA Associate','A','Sudah Bisa Diambil','Belum Diambil'],
-        ['Contoh Mahasiswa 2','2203002','2023','B','SAP FI Associate','A-','Belum Bisa Diambil','Belum Diambil']
+        ['2203001','Contoh Mahasiswa 1','2023','A','SAP S/4HANA Associate','A','Sudah Bisa Diambil','Belum Diambil'],
+        ['2203001','Contoh Mahasiswa 1','2023','A','SAP MM Associate','B+','Sudah Bisa Diambil','Belum Diambil'],
+        ['2203002','Contoh Mahasiswa 2','2023','B','SAP FI Associate','A-','Belum Bisa Diambil','Belum Diambil']
     ];
 
     // Buat HTML table untuk Excel (.xls)
@@ -1912,8 +1920,8 @@ function downloadTemplateSertifikat() {
 
 function exportSertifikatCSV() {
     const data = getData();
-    const headers = ['Kode Sertifikasi','Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
-    const rows = data.sertifikatSAP.map(s => [s.nomor, s.nama, s.nim, s.angkatan, s.kelas||'', s.jenis, s.nilai, s.status, s.diambil||'Belum Diambil']);
+    const headers = ['NIM','Nama Mahasiswa','Angkatan','Kelas','Nama Sertifikat','Nilai','Status Kelayakan','Status Pengambilan'];
+    const rows = data.sertifikatSAP.map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
 
     let csv = headers.join(',') + '\n';
     rows.forEach(r => { csv += r.map(v => '"'+v+'"').join(',') + '\n'; });
@@ -1927,8 +1935,8 @@ function exportSertifikatCSV() {
 
 function exportSertifikatExcel() {
     const data = getData();
-    const headers = ['Kode Sertifikasi','Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
-    const rows = data.sertifikatSAP.map(s => [s.nomor, s.nama, s.nim, s.angkatan, s.kelas||'', s.jenis, s.nilai, s.status, s.diambil||'Belum Diambil']);
+    const headers = ['NIM','Nama Mahasiswa','Angkatan','Kelas','Nama Sertifikat','Nilai','Status Kelayakan','Status Pengambilan'];
+    const rows = data.sertifikatSAP.map(s => [s.nim||'', s.nama||'', s.angkatan||'', s.kelas||'', s.jenis||'', s.nilai||'', s.status||'', s.diambil||'Belum Diambil']);
 
     
     // Buat HTML table untuk Excel
@@ -1957,7 +1965,7 @@ function showImportModal() {
         '<div style="margin:24px 0;padding:40px 20px;border:2px dashed var(--gray-300);border-radius:12px;background:var(--gray-50);cursor:pointer;" id="importDropZone" onclick="document.getElementById(\'importFileInput\').click()">'+
         '<i class="fas fa-cloud-upload-alt" style="font-size:3rem;color:var(--blue);margin-bottom:16px;display:block;"></i>'+
         '<p style="font-weight:600;color:var(--navy);margin-bottom:8px;">Klik untuk upload file</p>'+
-        '<p style="font-size:0.8125rem;color:var(--gray-500);">Format: Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan<br><small style="color:var(--gray-400);">(Kode sertifikat akan digenerate otomatis oleh sistem)</small></p>'+
+        '<p style="font-size:0.8125rem;color:var(--gray-500);">Format: NIM, Nama, Angkatan, Kelas, Nama Sertifikat, Nilai, Status Kelayakan, Status Pengambilan<br><small style="color:var(--gray-400);">(Satu NIM boleh muncul di beberapa baris untuk sertifikat berbeda)</small></p>'+
         '<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-file-excel"></i> Mendukung file <strong>.xls</strong>, <strong>.xlsx</strong>, dan <strong>.csv</strong></p>'+
         '<input type="file" id="importFileInput" accept=".csv,.xls,.xlsx" style="display:none;" onchange="processImportFile(this)">'+
         '</div>'+
@@ -2007,52 +2015,19 @@ function processImportFile(input) {
                     // Konversi semua cell ke string
                     const cols = row.map(cell => String(cell || '').trim());
                     
+                    // Format baru (NIM jadi acuan): NIM, Nama, Angkatan, Kelas, Nama Sertifikat, Nilai, Status Kelayakan, Status Pengambilan
+                    // Format lama 9 kolom tetap didukung: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
+                    let rec = null;
                     if (cols.length >= 9) {
-                        // Format 9 kolom: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
-                        appData.sertifikatSAP.push({ 
-                            nomor: cols[0], 
-                            nama: cols[1], 
-                            nim: cols[2], 
-                            angkatan: cols[3], 
-                            kelas: cols[4] || '', 
-                            jenis: cols[5], 
-                            nilai: cols[6], 
-                            status: cols[7],
-                            diambil: cols[8] || 'Belum Diambil',
-                            foto: ''
-                        });
-                        count++;
+                        rec = { nomor: cols[0], nama: cols[1], nim: cols[2], angkatan: cols[3], kelas: cols[4] || '', jenis: cols[5], nilai: cols[6], status: cols[7], diambil: cols[8] || 'Belum Diambil' };
                     } else if (cols.length >= 8) {
-                        // Format 8 kolom (TANPA Kode Sertifikasi)
-                        const newNomor = generateKodeSertifikatFromData(appData);
-                        appData.sertifikatSAP.push({ 
-                            nomor: newNomor, 
-                            nama: cols[0], 
-                            nim: cols[1], 
-                            angkatan: cols[2], 
-                            kelas: cols[3] || '', 
-                            jenis: cols[4], 
-                            nilai: cols[5], 
-                            status: cols[6],
-                            diambil: cols[7] || 'Belum Diambil',
-                            foto: ''
-                        });
-                        count++;
+                        rec = { nama: cols[1], nim: cols[0], angkatan: cols[2], kelas: cols[3] || '', jenis: cols[4], nilai: cols[5], status: cols[6], diambil: cols[7] || 'Belum Diambil' };
                     } else if (cols.length >= 6) {
-                        // Format 6 kolom
-                        const newNomor = generateKodeSertifikatFromData(appData);
-                        appData.sertifikatSAP.push({ 
-                            nomor: newNomor, 
-                            nama: cols[0], 
-                            nim: cols[1], 
-                            angkatan: cols[2], 
-                            kelas: '', 
-                            jenis: cols[3], 
-                            nilai: cols[4], 
-                            status: cols[5],
-                            diambil: 'Belum Diambil',
-                            foto: ''
-                        });
+                        rec = { nama: cols[0], nim: cols[1], angkatan: cols[2], kelas: '', jenis: cols[3], nilai: cols[4], status: cols[5], diambil: 'Belum Diambil' };
+                    }
+                    if (rec) {
+                        rec.pdf = rec.pdf || '';
+                        appData.sertifikatSAP.push(rec);
                         count++;
                     } else {
                         errors.push('Baris ' + (idx + 2) + ': hanya ' + cols.length + ' kolom (minimal 6 kolom diperlukan)');
@@ -2087,54 +2062,19 @@ function processImportFile(input) {
                 const cols = parseCSVLine(lines[i]);
                 
                 // Cek jumlah kolom untuk menentukan format
+                // Format baru (NIM jadi acuan): NIM, Nama, Angkatan, Kelas, Nama Sertifikat, Nilai, Status Kelayakan, Status Pengambilan
+                // Format lama 9 kolom tetap didukung: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
+                let rec = null;
                 if (cols.length >= 9) {
-                    // Format 9 kolom: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
-                    data.sertifikatSAP.push({ 
-                        nomor: cols[0], 
-                        nama: cols[1], 
-                        nim: cols[2], 
-                        angkatan: cols[3], 
-                        kelas: cols[4] || '', 
-                        jenis: cols[5], 
-                        nilai: cols[6], 
-                        status: cols[7],
-                        diambil: cols[8] || 'Belum Diambil',
-                        foto: ''
-                    });
-                    count++;
+                    rec = { nomor: cols[0], nama: cols[1], nim: cols[2], angkatan: cols[3], kelas: cols[4] || '', jenis: cols[5], nilai: cols[6], status: cols[7], diambil: cols[8] || 'Belum Diambil' };
                 } else if (cols.length >= 8) {
-                    // Format 8 kolom (TANPA Kode Sertifikasi - akan digenerate otomatis):
-                    // Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
-                    const newNomor = generateKodeSertifikatFromData(data);
-                    data.sertifikatSAP.push({ 
-                        nomor: newNomor, 
-                        nama: cols[0], 
-                        nim: cols[1], 
-                        angkatan: cols[2], 
-                        kelas: cols[3] || '', 
-                        jenis: cols[4], 
-                        nilai: cols[5], 
-                        status: cols[6],
-                        diambil: cols[7] || 'Belum Diambil',
-                        foto: ''
-                    });
-                    count++;
+                    rec = { nama: cols[1], nim: cols[0], angkatan: cols[2], kelas: cols[3] || '', jenis: cols[4], nilai: cols[5], status: cols[6], diambil: cols[7] || 'Belum Diambil' };
                 } else if (cols.length >= 6) {
-                    // Format 6 kolom (tanpa Kode, Kelas, Status Pengambilan):
-                    // Nama, NIM, Angkatan, Jenis, Nilai, Status
-                    const newNomor = generateKodeSertifikatFromData(data);
-                    data.sertifikatSAP.push({ 
-                        nomor: newNomor, 
-                        nama: cols[0], 
-                        nim: cols[1], 
-                        angkatan: cols[2], 
-                        kelas: '', 
-                        jenis: cols[3], 
-                        nilai: cols[4], 
-                        status: cols[5],
-                        diambil: 'Belum Diambil',
-                        foto: ''
-                    });
+                    rec = { nama: cols[0], nim: cols[1], angkatan: cols[2], kelas: '', jenis: cols[3], nilai: cols[4], status: cols[5], diambil: 'Belum Diambil' };
+                }
+                if (rec) {
+                    rec.pdf = rec.pdf || '';
+                    data.sertifikatSAP.push(rec);
                     count++;
                 } else {
                     errors.push('Baris ' + (i + 1) + ': hanya ' + cols.length + ' kolom (minimal 6 kolom diperlukan)');
@@ -2151,17 +2091,6 @@ function processImportFile(input) {
         };
         reader.readAsText(file);
     }
-}
-
-// Generate kode sertifikat baru berdasarkan data yang sudah ada (termasuk yang baru ditambahkan)
-function generateKodeSertifikatFromData(data) {
-    const existing = data.sertifikatSAP.map(s => {
-        const parts = s.nomor.split('-');
-        return parseInt(parts[parts.length - 1]) || 0;
-    });
-    const maxNum = existing.length > 0 ? Math.max(...existing) : 0;
-    const nextNum = String(maxNum + 1).padStart(4, '0');
-    return 'SAP-2026-' + nextNum;
 }
 
 // Fungsi untuk parse CSV line dengan benar (handle koma di dalam tanda kutip)
@@ -2342,7 +2271,6 @@ function renderAdminContent() {
         case 'dashboard': renderDashboard(); break;
         case 'platform': renderAdminPlatform(); break;
         case 'dosen': renderAdminDosen(); break;
-        case 'asprak': renderAdminAsprak(); break;
         case 'mitra': renderAdminMitra(); break;
         case 'anggota': renderAdminAnggota(); break;
         case 'berita': renderAdminBerita(); break;

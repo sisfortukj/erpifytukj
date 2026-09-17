@@ -98,7 +98,6 @@ body { background: var(--admin-bg); }
 <button data-tab="dashboard" class="active" onclick="switchAdminTab('dashboard')"><i class="fas fa-chart-pie"></i> <span>Dashboard</span></button>
 <button data-tab="platform" onclick="switchAdminTab('platform')"><i class="fas fa-cubes"></i> <span>Platform</span></button>
 <button data-tab="dosen" onclick="switchAdminTab('dosen')"><i class="fas fa-chalkboard-teacher"></i> <span>Dosen</span></button>
-<button data-tab="asprak" onclick="switchAdminTab('asprak')"><i class="fas fa-user-graduate"></i> <span>Asprak</span></button>
 <button data-tab="anggota" onclick="switchAdminTab('anggota')"><i class="fas fa-users"></i> <span>Anggota</span></button>
 <button data-tab="generasi" onclick="switchAdminTab('generasi')"><i class="fas fa-layer-group"></i> <span>Generasi</span></button>
 <button data-tab="mitra" onclick="switchAdminTab('mitra')"><i class="fas fa-handshake"></i> <span>Mitra</span></button>
@@ -201,9 +200,9 @@ body { background: var(--admin-bg); }
 <select id="agKodeDosen"></select>
 <p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Daftar diambil dari menu <strong>Dosen</strong> (format: Kode - Nama).</p>
 </div>
-<div class="form-group"><label>Asisten Praktikum (Asprak)</label>
-<select id="agKodeAsprak"></select>
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Daftar diambil dari menu <strong>Asprak</strong>.</p>
+<div class="form-group"><label>Kode Asprak</label>
+<input type="text" id="agKodeAsprak" placeholder="Contoh: ASP-01">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Asprak adalah mahasiswa (anggota) itu sendiri - kode terisi otomatis, boleh diubah.</p>
 </div>
 <div class="form-group">
 <label>Foto Profil</label>
@@ -286,34 +285,19 @@ body { background: var(--admin-bg); }
 </div>
 </div>
 
-<!-- ===== MODAL ASPRAK ===== -->
-<div class="modal-overlay" id="modalAsprak" onclick="if(event.target===this)closeModal('modalAsprak')">
-<div class="modal-content" style="max-width:480px;">
-<div class="modal-header"><h3 id="modalAsprakTitle">Tambah Asprak</h3><button class="modal-close" onclick="closeModal('modalAsprak')"><i class="fas fa-times"></i></button></div>
-<div class="modal-body">
-<input type="hidden" id="asIndex">
-<div class="form-group"><label>Kode Asprak <span style="color:red;">*</span></label><input type="text" id="asKode" placeholder="Contoh: ASP-01">
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Ditampilkan pada form mahasiswa sebagai <strong>Kode - Nama</strong>.</p>
-</div>
-<div class="form-group"><label>Nama Asprak</label><input type="text" id="asNama" placeholder="Nama asisten praktikum"></div>
-<button class="btn btn-primary" onclick="saveAsprak()"><i class="fas fa-save"></i> Simpan</button>
-<button class="btn btn-secondary" onclick="closeModal('modalAsprak')">Batal</button>
-</div>
-</div>
-</div>
-
 <!-- ===== MODAL SERTIFIKASI ===== -->
 <div class="modal-overlay" id="modalSertifikasi" onclick="if(event.target===this)closeModal('modalSertifikasi')">
 <div class="modal-content" style="max-width:550px;">
 <div class="modal-header"><h3 id="modalSertifikasiTitle">Tambah Sertifikasi</h3><button class="modal-close" onclick="closeModal('modalSertifikasi')"><i class="fas fa-times"></i></button></div>
 <div class="modal-body">
 <input type="hidden" id="srIndex">
-<div class="form-group"><label>Kode Sertifikasi (Otomatis)</label><input type="text" id="srNomor" readonly style="background:#f0f2f5;color:var(--gray-500);"></div>
-<div class="form-group"><label>Nama Mahasiswa</label><input type="text" id="srNama" placeholder="Nama lengkap"></div>
-<div class="form-group"><label>NIM</label><input type="text" id="srNim" placeholder="NIM mahasiswa"></div>
+<div class="form-group"><label>NIM <span style="color:red;">*</span></label><input type="text" id="srNim" placeholder="NIM mahasiswa (acuan utama)">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Satu NIM boleh punya banyak sertifikat - tambahkan lagi lewat tombol <strong>Tambah Sertifikat</strong> pada kartu mahasiswa.</p>
+</div>
+<div class="form-group"><label>Nama Mahasiswa <span style="color:red;">*</span></label><input type="text" id="srNama" placeholder="Nama lengkap"></div>
 <div class="form-group"><label>Angkatan</label><input type="text" id="srAngkatan" placeholder="Contoh: 2022"></div>
 <div class="form-group"><label>Kelas</label><input type="text" id="srKelas" placeholder="Contoh: A / B / Reguler"></div>
-<div class="form-group"><label>Jenis Sertifikasi</label><input type="text" id="srJenis" placeholder="Contoh: SAP S/4HANA Associate"></div>
+<div class="form-group"><label>Nama Sertifikat <span style="color:red;">*</span></label><input type="text" id="srJenis" placeholder="Contoh: SAP S/4HANA Associate / SAP MM Associate"></div>
 
 <div class="form-group"><label>Nilai</label><input type="text" id="srNilai" placeholder="Contoh: A / B+"></div>
 <div class="form-group"><label>Status Kelayakan</label>
@@ -330,24 +314,13 @@ body { background: var(--admin-bg); }
 </div>
 
 <div class="form-group">
-<label>Foto / Scan Sertifikat</label>
-<div class="upload-wrapper" id="srFotoWrapper">
-<i class="fas fa-camera"></i>
-<p>Klik untuk upload foto sertifikat</p>
-<img id="srFotoPreview" class="upload-preview" style="display:none;">
-<input type="file" id="srFotoInput" accept="image/*" style="display:none;">
-</div>
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Foto akan tampil pada hasil pengecekan sertifikat di halaman publik. Biarkan kosong jika tidak ingin menampilkan foto.</p>
-</div>
-
-<div class="form-group">
 <label>File PDF Sertifikat</label>
-<input type="text" id="srPdf" placeholder="Contoh: sertifikat/SAP-2026-0001.pdf atau https://...">
 <div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
 <input type="file" id="srPdfFile" accept="application/pdf,.pdf" onchange="handleSertifikatPdfUpload(this)" style="font-size:0.8125rem;">
 <span id="srPdfStatus" style="font-size:0.75rem;color:var(--gray-500);"></span>
 </div>
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Kosongkan bila ingin memakai otomatis nama file sesuai kode sertifikat di folder <strong>sertifikat/</strong>. Tombol "Lihat Sertifikat (PDF)" hanya muncul di halaman publik jika file PDF tersedia.</p>
+<input type="hidden" id="srPdf">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Unggah PDF sertifikatnya di sini. Tombol <strong>Lihat</strong> &amp; <strong>Unduh Sertifikat</strong> di halaman publik hanya muncul jika file PDF ini tersedia.</p>
 </div>
 
 <button class="btn btn-primary" onclick="saveSertifikasi()"><i class="fas fa-save"></i> Simpan</button>
@@ -419,11 +392,10 @@ body { background: var(--admin-bg); }
 <script>
 // ===== LOGIN CHECK (di server) + PEMUATAN DATA =====
 document.addEventListener('DOMContentLoaded', async function() {
-    // Handler upload: foto dosen/anggota/berita + PDF sertifikat + logo mitra
+    // Handler upload: foto dosen/anggota/berita + logo mitra
     setupUpload('dsFotoInput', 'dsFotoPreview', 'dsFotoWrapper');
     setupUpload('agFotoInput', 'agFotoPreview', 'agFotoWrapper');
     setupUpload('brFotoInput', 'brFotoPreview', 'brFotoWrapper');
-    setupUpload('srFotoInput', 'srFotoPreview', 'srFotoWrapper');
     setupUpload('mtLogoInput', 'mtLogoPreview', 'mtLogoWrapper');
     initCropCanvas();
 

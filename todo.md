@@ -60,6 +60,15 @@ ditambah Bagian 6 (backend dinamis untuk hosting Hostinger).
 - [x] 7.7 Perbaikan menu **Pengaturan** admin (drag & drop yang tidak berfungsi diganti pengaturan subjudul yang benar-benar tersimpan)
 - [x] 7.8 Migrasi otomatis data lama (mitra teks -> objek, kode dosen, daftar asprak, field kode pembimbing)
 
+## Bagian 8: Penyesuaian Lanjutan (revisi permintaan)
+- [x] 8.1 Asprak bukan menu terpisah - kode asprak menjadi atribut mahasiswa (anggota); menu & modal Asprak dihapus
+- [x] 8.2 Kode asprak otomatis unik per anggota (`ASP-01`, ...) + pengaman anti-duplikat saat migrasi data lama
+- [x] 8.3 Sertifikasi: field **kode sertifikasi** & **foto** dihapus, **NIM jadi acuan utama**
+- [x] 8.4 Menu Sertifikasi admin dikelompokkan per mahasiswa (NIM - Nama) dengan tombol **Tambah Sertifikat** per NIM
+- [x] 8.5 "Jenis Sertifikasi" menjadi **Nama Sertifikat** (satu NIM bisa punya banyak sertifikat: nilai, status kelayakan, status pengambilan, file PDF)
+- [x] 8.6 Halaman cek sertifikat: cukup masukkan NIM, semua sertifikat tampil rapi sebagai kartu dengan tombol Lihat & Unduh
+- [x] 8.7 Import/Export/Template CSV & Excel memakai NIM sebagai kolom pertama (format lama 9 kolom tetap didukung)
+
 ## Catatan Teknis
 - Foto & PDF sertifikat disimpan sebagai URL file di server (folder `uploads/`), bukan lagi data URL di localStorage.
 - Bila `api/config.php` belum diisi, website otomatis jalan dalam mode statis (localStorage) - tidak error.
