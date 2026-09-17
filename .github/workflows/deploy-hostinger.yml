@@ -39,6 +39,16 @@ jobs:
             echo "siap=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Sematkan versi commit ke data.js & style.css (anti-cache)
+        if: steps.cek.outputs.siap == 'true'
+        run: |
+          VER="${GITHUB_SHA::8}"
+          for f in *.html; do
+            sed -i -E "s#(data\.js)(\?v=[a-zA-Z0-9]+)?\"#\1?v=$VER\"#g; s#(style\.css)(\?v=[a-zA-Z0-9]+)?\"#\1?v=$VER\"#g" "$f"
+          done
+          echo "Versi aset disematkan: $VER"
+          grep -o "data\.js?v=[a-zA-Z0-9]*" index.html | head -1
+
       - name: Kirim file ke Hostinger via FTP
         if: steps.cek.outputs.siap == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
