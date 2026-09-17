@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uji Frontend - ERPify</title>
+<style>
+body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f0f2f5;margin:0;padding:32px;color:#0a1628}
+.card{max-width:880px;margin:0 auto;background:#fff;border-radius:14px;padding:28px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+h1{font-size:1.35rem;margin:0 0 6px}
+p.sub{color:#667;font-size:.9rem;margin:0 0 20px}
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{background:#0a1628;color:#fff;text-align:left;padding:10px 12px}
+td{padding:10px 12px;border-bottom:1px solid #eef0f2;vertical-align:top}
+.pass{color:#16a34a;font-weight:600}
+.fail{color:#dc2626;font-weight:600}
+.info{color:#207ae0;font-weight:600}
+.detail{color:#556;font-size:.8125rem}
+code{background:#f4f6f8;padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Uji Integrasi Frontend &harr; Backend ERPify</h1>
+<p class="sub">Halaman ini memuat <code>data.js</code> lalu memeriksa apakah website sudah memakai backend (database server) atau masih mode statis. Buka lewat http/https, bukan file://</p>
+<table>
+<thead><tr><th style="width:46%">Pemeriksaan</th><th style="width:12%">Hasil</th><th>Detail</th></tr></thead>
+<tbody id="tbl"><tr><td colspan="3">Menjalankan pemeriksaan...</td></tr></tbody>
+</table>
+</div>
+<script src="data.js"></script>
+<script>
+(async function() {
+    const baris = [];
+    const t = function(nama, status, detail) {
+        baris.push({ nama: nama, status: status, detail: detail || '' });
+    };
+
+    const data0 = getData();
+    t('data.js berhasil dimuat', 'PASS', 'fungsi inti tersedia (' + typeof loadData + ')');
+    t('getData() mengembalikan struktur data', (data0 && Array.isArray(data0.platforms) && Array.isArray(data0.sertifikatSAP)) ? 'PASS' : 'FAIL',
+      data0 ? (data0.platforms.length + ' platform, ' + data0.sertifikatSAP.length + ' sertifikat') : 'data kosong');
+
+    t('getSertifikatPdfUrl(): konvensi nama file', getSertifikatPdfUrl({ nomor: 'SAP-2026-0001' }) === 'sertifikat/SAP-2026-0001.pdf' ? 'PASS' : 'FAIL',
+      'hasil: ' + getSertifikatPdfUrl({ nomor: 'SAP-2026-0001' }));
+    t('getSertifikatPdfUrl(): pakai field pdf admin', getSertifikatPdfUrl({ nomor: 'X', pdf: 'uploads/sertifikat/a.pdf' }) === 'uploads/sertifikat/a.pdf' ? 'PASS' : 'FAIL',
+      'hasil: ' + getSertifikatPdfUrl({ nomor: 'X', pdf: 'uploads/sertifikat/a.pdf' }));
+
+    await loadData();
+    t('loadData() selesai tanpa error', 'PASS', apiIsEnabled() ? 'data berasal dari server' : 'server tidak tersedia, memakai localStorage');
+    t('Backend API aktif', apiIsEnabled() ? 'PASS' : 'INFO',
+      apiIsEnabled() ? 'website memakai database server' : 'mode statis/localStorage - periksa api/config.php dan api/selftest.php');
+
+    const data = getData();
+    t('Data dari server terpakai', (Array.isArray(data.platforms) && data.platforms.length > 0) ? 'PASS' : 'FAIL',
+      data.platforms.length + ' platform, ' + data.sertifikatSAP.length + ' sertifikat, ' + data.mitra.length + ' mitra');
+
+    const status = await apiAuthStatus();
+    t('Endpoint auth.php merespons', (status && !status.offline) ? 'PASS' : (apiIsEnabled() ? 'FAIL' : 'INFO'),
+      (status && !status.offline) ? ('login admin: ' + (status.loggedIn ? 'sudah login' : 'belum login')) : 'tidak dapat dihubungi');
+
+    // Cek apakah file PDF contoh benar-benar dapat diakses
+    const contoh = data.sertifikatSAP[0];
+    if (contoh) {
+        const url = getSertifikatPdfUrl(contoh);
+        let ada = false;
+        try {
+            const res = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+            ada = res.ok;
+        } catch (e) { ada = false; }
+        t('File PDF sertifikat ' + contoh.nomor, ada ? 'PASS' : 'INFO',
+          ada ? ('tersedia di ' + url) : ('belum ada file di ' + url + ' - tombol PDF otomatis tidak ditampilkan (normal bila belum diunggah)'));
+    }
+
+    const pg = baris.filter(b => b.status === 'FAIL').length;
+    const tb = document.getElementById('tbl');
+    tb.innerHTML = baris.map(function(b) {
+        const cls = b.status === 'PASS' ? 'pass' : (b.status === 'FAIL' ? 'fail' : 'info');
+        return '<tr><td>' + b.nama + '</td><td class="' + cls + '">' + b.status + '</td><td class="detail">' + b.detail + '</td></tr>';
+    }).join('') + '<tr><td colspan="3"><strong>' + (pg === 0 ? 'Semua pemeriksaan penting lolos.' : ('Ada ' + pg + ' pemeriksaan yang GAGAL, lihat baris bertanda FAIL.')) + '</strong></td></tr>';
+})();
+</script>
+</body>
+</html>

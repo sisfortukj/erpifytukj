@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mata Kuliah - ERPify</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="matakuliah">
+<nav class="navbar" id="navbar">
+<div class="nav-container">
+<a href="index.html" class="nav-logo">
+<img src="Logo ERP.png" alt="ERPify Logo">
+<div><span>ERPify</span><small>Laboratorium ERP</small></div>
+</a>
+<button class="nav-toggle" id="navToggle"><span></span><span></span><span></span></button>
+<ul class="nav-menu" id="navMenu">
+<li><a href="index.html">Beranda</a></li>
+<li><a href="dosen-anggota.html">Dosen & Anggota</a></li>
+<li class="nav-dropdown">
+<a href="javascript:void(0)" class="active">Mata Kuliah & Sertifikasi <i class="fas fa-chevron-down"></i></a>
+<div class="nav-dropdown-menu">
+<a href="matakuliah.html"><i class="fas fa-book"></i> Mata Kuliah</a>
+<a href="sertifikat.html"><i class="fas fa-certificate"></i> Cek Sertifikat SAP</a>
+</div>
+</li>
+<li><a href="kerjasama.html">Kerjasama</a></li>
+<li><a href="admin.html" style="border:1px solid rgba(255,255,255,0.2);"><i class="fas fa-cog"></i> Admin</a></li>
+</ul>
+</div>
+</nav>
+
+<section class="page-hero">
+<div class="section-container">
+<h1>Mata Kuliah <span>ERPify</span></h1>
+<p>Berbagai mata kuliah yang dikelola oleh Laboratorium ERPify</p>
+</div>
+</section>
+
+<section class="section bg-light">
+<div class="section-container">
+<div class="section-header fade-in">
+<div class="section-label"><i class="fas fa-book-open"></i> Kurikulum ERP</div>
+<h2 class="section-title">Katalog Mata Kuliah ERP</h2>
+<p class="section-subtitle">Mata kuliah yang dirancang untuk mengembangkan kompetensi fungsional dan teknis ERP secara komprehensif.</p>
+</div>
+<div class="mk-grid" id="mkGrid"></div>
+</div>
+</section>
+
+<footer class="footer">
+<div class="footer-container">
+<div class="footer-brand">
+<img src="Logo ERP.png" alt="ERPify Logo">
+<p>Laboratorium ERPify adalah pusat pengembangan konsultan fungsional dan teknis bidang ERP.</p>
+<div class="footer-social">
+<a href="https://instagram.com/erpify_" target="_blank"><i class="fab fa-instagram"></i></a>
+<a href="https://linkedin.com/company/erpify-laboratory" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+</div>
+</div>
+<div><h4>Navigasi</h4><ul><li><a href="index.html">Beranda</a></li><li><a href="dosen-anggota.html">Dosen & Anggota</a></li><li><a href="matakuliah.html">Mata Kuliah</a></li><li><a href="sertifikat.html">Cek Sertifikat SAP</a></li><li><a href="kerjasama.html">Kerjasama</a></li></ul></div>
+<div><h4>Program</h4><ul><li><a href="#">Pelatihan ERP</a></li><li><a href="#">Sertifikasi</a></li><li><a href="#">Riset</a></li><li><a href="#">Konsultasi</a></li><li><a href="#">Magang</a></li></ul></div>
+<div><h4>Kontak</h4><ul><li><a href="#"><i class="fas fa-map-marker-alt"></i> Kampus Universitas</a></li><li><a href="#"><i class="fas fa-envelope"></i> erpify@kampus.ac.id</a></li><li><a href="#"><i class="fas fa-phone"></i> +62 812-3456-7890</a></li><li><a href="https://instagram.com/erpify_" target="_blank"><i class="fab fa-instagram"></i> @erpify_</a></li></ul></div>
+</div>
+<div class="footer-bottom">&copy; 2026 Laboratorium ERPify. All rights reserved.</div>
+</footer>
+
+<script src="data.js"></script>
+<script>
+(async function() {
+    await loadData();
+    renderMK();
+    initNavbar();
+    initFadeIn();
+    applyPageSettings();
+})();
+</script>
+</body>
+</html>

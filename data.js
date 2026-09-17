@@ -1,0 +1,1798 @@
+// ============================================================
+// KONFIGURASI BACKEND (Hostinger: folder /api - PHP + MySQL)
+// ------------------------------------------------------------
+// Bila API tidak tersedia (file dibuka langsung tanpa server, atau
+// config database belum benar), website otomatis kembali memakai
+// localStorage seperti versi statis sebelumnya.
+// ============================================================
+const ERPIFY_API_URL = 'api/';
+const ERPIFY_API_HEADERS = { 'X-ERPify': '1' };
+
+// Kategori folder upload, dipetakan dari id input file di admin.html
+const ERPIFY_UPLOAD_CATEGORY = {
+    dsFotoInput: 'dosen',
+    agFotoInput: 'anggota',
+    brFotoInput: 'berita',
+    srFotoInput: 'sertifikat'
+};
+
+let erpifyApiAvailable = false;   // true setelah api/data.php berhasil diakses
+let erpifyDataCache = null;       // cache data aktif (dipakai getData)
+
+function apiIsEnabled() {
+    return erpifyApiAvailable;
+}
+
+// Pembungkus fetch ke API: selalu kirim header penanda + cookie session
+function erpifyApiFetch(path, options) {
+    const opts = options || {};
+    opts.headers = Object.assign({}, ERPIFY_API_HEADERS, opts.headers || {});
+    opts.credentials = 'same-origin';
+    if (opts.cache === undefined) opts.cache = 'no-store';
+    return fetch(ERPIFY_API_URL + path, opts);
+}
+
+// Notifikasi kecil di pojok kanan bawah
+function erpifyToast(message, type) {
+    let box = document.getElementById('erpifyToast');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'erpifyToast';
+        box.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:9999;max-width:360px;padding:14px 18px;border-radius:10px;font-size:0.875rem;font-family:Inter,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,0.25);color:#fff;line-height:1.5;display:none;';
+        document.body.appendChild(box);
+    }
+    box.style.background = (type === 'error') ? '#b42318' : '#167044';
+    box.innerHTML = '<i class="fas fa-' + (type === 'error' ? 'exclamation-triangle' : 'check-circle') + '"></i> ' + message;
+    box.style.display = 'block';
+    clearTimeout(box._erpifyTimer);
+    box._erpifyTimer = setTimeout(function() { box.style.display = 'none'; }, 6000);
+}
+
+// Ambil data bersama dari server (dipanggil sekali di awal setiap halaman)
+async function loadData() {
+    if (typeof fetch !== 'function' || window.location.protocol === 'file:') {
+        erpifyDataCache = getLocalData();
+        return erpifyDataCache;
+    }
+    try {
+        const res = await erpifyApiFetch('data.php');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (!json || json.ok !== true) throw new Error((json && json.error) ? json.error : 'Respons API tidak valid');
+        erpifyApiAvailable = true;
+        if (json.data && json.data.platforms) {
+            erpifyDataCache = json.data;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data)); } catch (e) {}
+        } else {
+            // Database masih kosong: pakai data default/local dulu, data
+            // akan tersimpan ke server saat admin menyimpan perubahan.
+            erpifyDataCache = getLocalData();
+        }
+    } catch (e) {
+        erpifyApiAvailable = false;
+        erpifyDataCache = getLocalData();
+        // Bantu penelusuran masalah: penyebab API tidak aktif tampil di Console browser (F12)
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[ERPify] Backend tidak aktif, memakai mode statis/localStorage. Penyebab:', e && e.message ? e.message : e);
+            console.warn('[ERPify] Buka ' + ERPIFY_API_URL + 'selftest.php untuk diagnosa lengkap.');
+        }
+    }
+    return erpifyDataCache;
+}
+
+// Unggah file ke server; Promise berisi { url, fileName }
+function uploadFileToApi(file, category) {
+    return new Promise(function(resolve, reject) {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('category', category || 'umum');
+        erpifyApiFetch('upload.php', { method: 'POST', body: form })
+            .then(function(res) { return res.json().catch(function() { return null; }); })
+            .then(function(json) {
+                if (json && json.ok === true) {
+                    resolve(json);
+                } else {
+                    reject(new Error((json && json.error) ? json.error : 'Upload gagal.'));
+                }
+            })
+            .catch(reject);
+    });
+}
+
+// ===== AUTENTIKASI ADMIN (diproses di server) =====
+async function apiLogin(username, password) {
+    try {
+        const res = await erpifyApiFetch('auth.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', username: username, password: password })
+        });
+        const json = await res.json().catch(function() { return null; });
+        return json || { ok: false, error: 'Respons server tidak valid.' };
+    } catch (e) {
+        return { ok: false, offline: true, error: 'Tidak dapat menghubungi server.' };
+    }
+}
+
+async function apiLogout() {
+    try {
+        await erpifyApiFetch('auth.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'logout' })
+        });
+    } catch (e) { /* diabaikan */ }
+}
+
+async function apiAuthStatus() {
+    try {
+        const res = await erpifyApiFetch('auth.php?action=status');
+        const json = await res.json().catch(function() { return null; });
+        return json || { ok: false, offline: true, loggedIn: false };
+    } catch (e) {
+        return { ok: false, offline: true, loggedIn: false };
+    }
+}
+
+async function apiChangePassword(oldPassword, newPassword) {
+    try {
+        const res = await erpifyApiFetch('auth.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'change_password', oldPassword: oldPassword, newPassword: newPassword })
+        });
+        const json = await res.json().catch(function() { return null; });
+        return json || { ok: false, error: 'Respons server tidak valid.' };
+    } catch (e) {
+        return { ok: false, offline: true, error: 'Tidak dapat menghubungi server.' };
+    }
+}
+
+// Nilai gambar dari elemen preview upload (disimpan sebagai URL relatif
+// supaya tetap benar walau nama domain berubah)
+function getUploadPreviewValue(previewId) {
+    const el = document.getElementById(previewId);
+    if (!el || el.style.display === 'none') return '';
+    return el.getAttribute('src') || '';
+}
+
+const STORAGE_KEY = 'erpify_data';
+
+function getDefaultData() {
+    return {
+        adminAccount: {
+            username: 'admin',
+            password: 'erpify123',
+            lastPasswordChange: new Date().toISOString()
+        },
+
+        pageSettings: {
+            beranda: { subtitle: 'Pusat pengembangan konsultan fungsional dan teknis bidang ERP. Berfokus pada pelatihan, riset, dan implementasi sistem ERP profesional berbasis Odoo, SAP, dan Acumatica.' },
+            dosen: { subtitle: 'Tim pengajar dan anggota laboratorium ERPify' },
+            matakuliah: { subtitle: 'Berbagai mata kuliah yang dikelola oleh Laboratorium ERPify' },
+            kerjasama: { subtitle: 'Jalinan kerjasama dengan berbagai institusi dan perusahaan' },
+            berita: { subtitle: 'Informasi terbaru seputar kegiatan Laboratorium ERPify' },
+            sertifikat: { subtitle: 'Verifikasi keaslian sertifikat SAP yang diterbitkan oleh Laboratorium ERPify' }
+        },
+        pageOrder: ['beranda','dosen','matakuliah','kerjasama','berita','sertifikat'],
+
+        platforms: [
+            { id:1, icon:'fab fa-odnoklassniki', name:'Odoo', desc:'Platform ERP open-source terkemuka dengan modul lengkap mulai dari CRM, accounting, inventory, HR, hingga manufacturing.', foto:'' },
+            { id:2, icon:'fas fa-chart-line', name:'SAP', desc:'Sistem ERP enterprise kelas dunia yang digunakan oleh perusahaan multinasional. Fokus pada konfigurasi fungsional dan ABAP.', foto:'' },
+            { id:3, icon:'fas fa-cloud', name:'Acumatica', desc:'Platform ERP cloud-based modern dengan fleksibilitas tinggi untuk perusahaan menengah hingga besar.', foto:'' }
+        ],
+        dosen: [
+            { id:1, nama:'Dr. Ahmad Fauzi, M.Kom', jabatan:'Kepala Laboratorium ERPify', keahlian:'Ahli implementasi SAP dan Odoo. 15+ tahun pengalaman.', tags:['SAP','Odoo','ABAP'], foto:'' },
+            { id:2, nama:'Rina Wijaya, S.T., M.T.', jabatan:'Dosen Senior ERP', keahlian:'Spesialis ERP Accounting dan Supply Chain Management.', tags:['Accounting','SCM','Acumatica'], foto:'' },
+            { id:3, nama:'Budi Santoso, S.Kom., M.Eng.', jabatan:'Dosen Teknis ERP', keahlian:'Pakar konfigurasi teknis dan pengembangan modul ERP.', tags:['ABAP','Python','Odoo Dev'], foto:'' }
+        ],
+        mitra: ['PT. Tech ERP Solusi','PT. Digital Enterprise','CV. Software House','PT. Konsultan ERP','PT. Inovasi Teknologi','CV. Bisnis Digital'],
+        generasi: {
+            gen1: { title:'Generasi 1 - Angkatan Perdana', desc:'Generasi pertama yang menjadi pionir Laboratorium ERPify.', anggota:[
+                { nama:'Ahmad Rizki', nim:'2201001', jabatan:'Ketua Lab', divisi:'SAP', foto:'' },
+                { nama:'Siti Nurhaliza', nim:'2201002', jabatan:'Wakil Ketua', divisi:'Odoo', foto:'' },
+                { nama:'Budi Prasetyo', nim:'2201003', jabatan:'Sekretaris', divisi:'Acumatica', foto:'' },
+                { nama:'Dewi Lestari', nim:'2201004', jabatan:'Bendahara', divisi:'ABAP', foto:'' },
+                { nama:'Rudi Hartono', nim:'2201005', jabatan:'Anggota', divisi:'SCM', foto:'' },
+                { nama:'Ani Rahmawati', nim:'2201006', jabatan:'Anggota', divisi:'HR', foto:'' }
+            ]},
+            gen2: { title:'Generasi 2 - Angkatan Pengembangan', desc:'Generasi kedua yang melanjutkan pengembangan kompetensi ERP.', anggota:[
+                { nama:'Fajar Nugroho', nim:'2202001', jabatan:'Ketua Lab', divisi:'Odoo', foto:'' },
+                { nama:'Putri Ayu', nim:'2202002', jabatan:'Wakil Ketua', divisi:'SAP', foto:'' },
+                { nama:'Adi Saputra', nim:'2202003', jabatan:'Sekretaris', divisi:'Accounting', foto:'' },
+                { nama:'Mega Sari', nim:'2202004', jabatan:'Bendahara', divisi:'SCM', foto:'' },
+                { nama:'Dimas Ardiansyah', nim:'2202005', jabatan:'Anggota', divisi:'ABAP', foto:'' },
+                { nama:'Rina Marlina', nim:'2202006', jabatan:'Anggota', divisi:'HR', foto:'' },
+                { nama:'Hendra Gunawan', nim:'2202007', jabatan:'Anggota', divisi:'Acumatica', foto:'' },
+                { nama:'Sari Indah', nim:'2202008', jabatan:'Anggota', divisi:'Odoo', foto:'' }
+            ]},
+            gen3: { title:'Generasi 3 - Angkatan Terbaru', desc:'Generasi terbaru dengan semangat inovasi dan penguasaan teknologi ERP terkini.', anggota:[
+                { nama:'Rizky Pratama', nim:'2203001', jabatan:'Ketua Lab', divisi:'SAP', foto:'' },
+                { nama:'Nadia Fitri', nim:'2203002', jabatan:'Wakil Ketua', divisi:'Odoo', foto:'' },
+                { nama:'Irfan Hakim', nim:'2203003', jabatan:'Sekretaris', divisi:'ABAP', foto:'' },
+                { nama:'Lina Marlina', nim:'2203004', jabatan:'Bendahara', divisi:'Accounting', foto:'' },
+                { nama:'Teguh Setiawan', nim:'2203005', jabatan:'Anggota', divisi:'SCM', foto:'' },
+                { nama:'Fitri Handayani', nim:'2203006', jabatan:'Anggota', divisi:'HR', foto:'' },
+                { nama:'Agus Wijaya', nim:'2203007', jabatan:'Anggota', divisi:'Acumatica', foto:'' },
+                { nama:'Dian Permata', nim:'2203008', jabatan:'Anggota', divisi:'Odoo', foto:'' },
+                { nama:'Bayu Aji', nim:'2203009', jabatan:'Anggota', divisi:'SAP', foto:'' },
+                { nama:'Citra Dewi', nim:'2203010', jabatan:'Anggota', divisi:'ABAP', foto:'' }
+            ]}
+        },
+        berita: [
+            { id:1, icon:'fas fa-calendar-alt', date:'2026-06-15T09:00:00.000Z', dateDisplay:'15 Juni 2026, 09:00', title:'Workshop Implementasi Odoo untuk Mahasiswa', desc:'ERPify menyelenggarakan workshop implementasi Odoo modul Accounting dan Inventory bagi mahasiswa semester 5.', fullDesc:'Laboratorium ERPify sukses menyelenggarakan workshop Implementasi Odoo yang diikuti oleh 50 mahasiswa dari berbagai program studi. Workshop ini berfokus pada modul Accounting dan Inventory yang merupakan modul inti dalam sistem ERP Odoo.\n\nPara peserta mendapatkan pengalaman langsung dalam mengkonfigurasi modul Odoo, mulai dari setup awal perusahaan, chart of account, manajemen inventory, hingga pembuatan laporan keuangan otomatis. Workshop ini dipandu oleh instruktur berpengalaman dari tim ERPify.\n\nDengan adanya workshop ini, diharapkan mahasiswa memiliki kompetensi praktis dalam implementasi Odoo yang siap digunakan di dunia industri.', foto:'' },
+            { id:2, icon:'fas fa-trophy', date:'2026-06-01T10:00:00.000Z', dateDisplay:'1 Juni 2026, 10:00', title:'Tim ERPify Juara 1 Lomba Konfigurasi SAP', desc:'Tim mahasiswa ERPify berhasil meraih juara pertama dalam lomba konfigurasi SAP tingkat nasional.', fullDesc:'Prestasi membanggakan diraih oleh tim ERPify dalam ajang Lomba Konfigurasi SAP Tingkat Nasional yang diselenggarakan di Universitas Indonesia. Tim yang terdiri dari 3 mahasiswa berhasil mengalahkan 20 tim dari berbagai universitas ternama di Indonesia.\n\nDalam kompetisi ini, peserta ditantang untuk melakukan konfigurasi SAP S/4HANA untuk studi kasus perusahaan manufaktur. Tim ERPify berhasil menyelesaikan konfigurasi modul FI, MM, dan SD dengan sempurna dalam waktu yang ditentukan.\n\nKemenangan ini membuktikan bahwa kompetensi mahasiswa ERPify dalam bidang SAP telah diakui di tingkat nasional dan siap bersaing di dunia profesional.', foto:'' },
+            { id:3, icon:'fas fa-users', date:'2026-05-20T14:00:00.000Z', dateDisplay:'20 Mei 2026, 14:00', title:'Pelantikan Anggota Baru Generasi 3 ERPify', desc:'Resmi dilantik 25 anggota baru Generasi 3 yang siap mengembangkan kompetensi ERP.', fullDesc:'Laboratorium ERPify resmi melantik 25 anggota baru Generasi 3 dalam sebuah acara yang digelar di Aula Kampus. Acara pelantikan ini dihadiri oleh dosen pembimbing, pengurus laboratorium, dan para alumni ERPify.\n\nAnggota baru Generasi 3 akan dibagi ke dalam divisi-divisi sesuai minat dan bakat mereka, yaitu SAP, Odoo, Acumatica, ABAP, dan divisi pendukung lainnya. Mereka akan menjalani serangkaian pelatihan dan proyek pengembangan kompetensi ERP selama satu semester ke depan.\n\nDengan bergabungnya anggota baru ini, ERPify semakin solid dan siap untuk terus berkontribusi dalam pengembangan sumber daya manusia di bidang ERP.', foto:'' },
+            { id:4, icon:'fas fa-chalkboard-teacher', date:'2026-06-10T09:00:00.000Z', dateDisplay:'10 Juni 2026, 09:00', title:'Seminar Nasional ERP: Masa Depan Digitalisasi Perusahaan', desc:'ERPify menggelar seminar nasional dengan pembicara dari praktisi ERP terkemuka di Indonesia.', fullDesc:'Seminar Nasional bertajuk "Masa Depan Digitalisasi Perusahaan Melalui Implementasi ERP" sukses digelar di Aula Universitas. Acara ini menghadirkan pembicara-pembicara ternama dari perusahaan teknologi terkemuka di Indonesia.\n\nLebih dari 200 peserta dari berbagai universitas dan perusahaan hadir dalam seminar ini. Topik yang dibahas meliputi tren ERP terkini, tantangan implementasi, dan peluang karir di bidang ERP.\n\nSeminar ini menjadi ajang networking dan berbagi pengetahuan antara akademisi, praktisi, dan mahasiswa yang tertarik dengan dunia ERP.', foto:'' },
+            { id:5, icon:'fas fa-code', date:'2026-06-05T11:00:00.000Z', dateDisplay:'5 Juni 2026, 11:00', title:'Bootcamp ABAP Programming Batch 2 Dibuka', desc:'Pendaftaran bootcamp ABAP Programming batch 2 telah dibuka untuk mahasiswa aktif.', fullDesc:'ERPify membuka pendaftaran Bootcamp ABAP Programming Batch 2 setelah kesuksesan batch pertama. Program ini dirancang untuk membekali mahasiswa dengan keterampilan pemrograman ABAP yang digunakan dalam ekosistem SAP.\n\nBootcamp akan berlangsung selama 8 minggu dengan materi meliputi dasar ABAP, SAP Dictionary, Report Programming, Module Pool, dan studi kasus implementasi. Peserta akan mendapatkan sertifikat kompetensi setelah menyelesaikan program.\n\nPendaftaran dibuka hingga 30 Juni 2026. Kuota terbatas hanya 30 peserta.', foto:'' },
+            { id:6, icon:'fas fa-handshake', date:'2026-05-28T13:00:00.000Z', dateDisplay:'28 Mei 2026, 13:00', title:'ERPify Jalin Kerjasama dengan PT. Tech ERP Solusi', desc:'Kerjasama strategis untuk pengembangan kurikulum dan program magang mahasiswa.', fullDesc:'Laboratorium ERPify resmi menjalin kerjasama strategis dengan PT. Tech ERP Solusi, salah satu perusahaan konsultan ERP terkemuka di Indonesia. Kerjasama ini mencakup pengembangan kurikulum, program magang, dan riset bersama.\n\nMelalui kerjasama ini, mahasiswa ERPify akan mendapatkan kesempatan magang di proyek-proyek implementasi ERP yang sesungguhnya. Selain itu, PT. Tech ERP Solusi juga akan berkontribusi dalam pengembangan materi perkuliahan yang relevan dengan kebutuhan industri.\n\nDiharapkan kerjasama ini dapat meningkatkan kompetensi lulusan dan memperkuat link and match antara dunia pendidikan dan industri.', foto:'' },
+            { id:7, icon:'fas fa-laptop-code', date:'2026-05-15T10:00:00.000Z', dateDisplay:'15 Mei 2026, 10:00', title:'Pelatihan Odoo Functional Consultant Angkatan 2', desc:'Pelatihan intensif Odoo Functional Consultant untuk mahasiswa dan umum.', fullDesc:'ERPify menyelenggarakan Pelatihan Odoo Functional Consultant Angkatan 2 setelah sukses dengan angkatan pertama. Pelatihan ini terbuka untuk mahasiswa dan umum yang ingin memperdalam kompetensi di bidang Odoo ERP.\n\nMateri pelatihan mencakup konfigurasi modul Sales, Purchase, Accounting, Inventory, dan HR. Peserta akan belajar langsung dari praktisi Odoo yang berpengalaman dalam implementasi di berbagai perusahaan.\n\nPelatihan diakhiri dengan ujian sertifikasi dan peserta yang lulus akan mendapatkan sertifikat Odoo Functional Consultant dari ERPify.', foto:'' },
+            { id:8, icon:'fas fa-award', date:'2026-05-10T09:00:00.000Z', dateDisplay:'10 Mei 2026, 09:00', title:'Mahasiswa ERPify Raih Sertifikasi SAP S/4HANA', desc:'5 mahasiswa ERPify berhasil meraih sertifikasi SAP S/4HANA Associate internasional.', fullDesc:'Lima mahasiswa ERPify berhasil meraih sertifikasi SAP S/4HANA Associate yang diakui secara internasional. Sertifikasi ini diperoleh setelah melalui ujian ketat yang diselenggarakan oleh SAP.\n\nKelima mahasiswa tersebut adalah Ahmad Rizki, Siti Nurhaliza, Budi Prasetyo, Dewi Lestari, dan Rudi Hartono. Mereka telah menjalani persiapan intensif selama 3 bulan yang difasilitasi oleh Laboratorium ERPify.\n\nPencapaian ini membuktikan bahwa ERPify mampu menghasilkan lulusan yang kompeten dan siap bersaing di tingkat global dalam bidang ERP.', foto:'' },
+            { id:9, icon:'fas fa-robot', date:'2026-05-05T13:00:00.000Z', dateDisplay:'5 Mei 2026, 13:00', title:'Workshop RPA dan Integrasi ERP untuk Otomasi Bisnis', desc:'Workshop Robotic Process Automation dan integrasinya dengan sistem ERP.', fullDesc:'ERPify bekerja sama dengan perusahaan teknologi menyelenggarakan workshop tentang Robotic Process Automation (RPA) dan integrasinya dengan sistem ERP. Workshop ini diikuti oleh 40 mahasiswa dan dosen.\n\nPeserta mempelajari bagaimana mengotomatisasi proses bisnis berulang menggunakan RPA dan mengintegrasikannya dengan sistem ERP seperti Odoo dan SAP. Materi mencakup pengenalan RPA, studi kasus otomasi, dan praktik langsung menggunakan tools RPA.\n\nWorkshop ini bertujuan untuk membekali peserta dengan keterampilan otomasi yang sangat dibutuhkan di era digital.', foto:'' },
+            { id:10, icon:'fas fa-graduation-cap', date:'2026-05-01T10:00:00.000Z', dateDisplay:'1 Mei 2026, 10:00', title:'Program Persiapan Karir ERP untuk Mahasiswa Tingkat Akhir', desc:'Program pembekalan karir bagi mahasiswa tingkat akhir yang ingin berkarir di bidang ERP.', fullDesc:'ERPify meluncurkan Program Persiapan Karir ERP yang ditujukan bagi mahasiswa tingkat akhir. Program ini dirancang untuk menjembatani kesenjangan antara kompetensi akademik dan kebutuhan industri ERP.\n\nProgram mencakup pelatihan teknis, soft skills, simulasi wawancara kerja, dan networking dengan perusahaan mitra. Peserta juga akan mendapatkan bimbingan dalam mempersiapkan portofolio dan sertifikasi ERP.\n\nProgram ini gratis untuk anggota aktif ERPify dan akan berlangsung selama 2 bulan. Pendaftaran dibuka hingga 15 Juni 2026.', foto:'' },
+            { id:11, icon:'fas fa-database', date:'2026-04-25T09:00:00.000Z', dateDisplay:'25 April 2026, 09:00', title:'Pelatihan SAP MM (Material Management) untuk Mahasiswa', desc:'Pelatihan intensif modul SAP MM yang mencakup pengelolaan material, purchasing, dan inventory.', fullDesc:'ERPify menyelenggarakan pelatihan khusus modul SAP MM (Material Management) yang diikuti oleh 30 mahasiswa. Pelatihan ini berfokus pada konfigurasi dan praktik langsung pengelolaan material dalam sistem SAP.\n\nMateri pelatihan meliputi master data material, purchasing process, inventory management, valuation, dan reporting. Peserta belajar langsung menggunakan sistem SAP S/4HANA yang disediakan oleh laboratorium.\n\nPelatihan ini merupakan bagian dari program pengembangan kompetensi SAP yang berkelanjutan di ERPify.', foto:'' },
+            { id:12, icon:'fas fa-chart-pie', date:'2026-04-20T10:00:00.000Z', dateDisplay:'20 April 2026, 10:00', title:'Workshop Business Intelligence dengan Odoo', desc:'Workshop integrasi Business Intelligence dan dashboard analitik menggunakan platform Odoo.', fullDesc:'Workshop Business Intelligence dengan Odoo sukses digelar dengan menghadirkan praktisi BI dari perusahaan konsultan. Peserta mempelajari cara membangun dashboard analitik dan laporan bisnis menggunakan modul Odoo BI.\n\nTopik yang dibahas mencakup data visualization, pembuatan KPI dashboard, analisis penjualan, dan forecasting menggunakan tools bawaan Odoo. Workshop ini sangat bermanfaat bagi mahasiswa yang tertarik dengan data analytics.\n\nPeserta mendapatkan akses ke template dashboard yang bisa langsung digunakan untuk proyek mereka.', foto:'' },
+            { id:13, icon:'fas fa-globe', date:'2026-04-15T08:00:00.000Z', dateDisplay:'15 April 2026, 08:00', title:'Kunjungan Industri ke PT. SAP Indonesia', desc:'Mahasiswa ERPify melakukan kunjungan industri ke kantor PT. SAP Indonesia untuk belajar langsung.', fullDesc:'Sebanyak 25 mahasiswa ERPify melakukan kunjungan industri ke kantor PT. SAP Indonesia yang berlokasi di Jakarta. Kunjungan ini bertujuan untuk memberikan wawasan langsung tentang ekosistem SAP di Indonesia.\n\nMahasiswa berkesempatan untuk berdiskusi dengan para ahli SAP, melihat demo produk terbaru, dan memahami jalur karir di dunia SAP. Kegiatan ini juga menjadi ajang networking antara mahasiswa dan praktisi industri.\n\nKunjungan industri ini diharapkan dapat memotivasi mahasiswa untuk terus mengembangkan kompetensi SAP mereka.', foto:'' },
+            { id:14, icon:'fas fa-file-code', date:'2026-04-10T09:00:00.000Z', dateDisplay:'10 April 2026, 09:00', title:'Hackathon Pengembangan Modul Odoo 2026', desc:'Kompetisi hackathon pengembangan modul kustom Odoo antar mahasiswa se-Indonesia.', fullDesc:'ERPify sukses menyelenggarakan Hackathon Pengembangan Modul Odoo 2026 yang diikuti oleh 15 tim dari berbagai universitas. Kompetisi ini menantang peserta untuk mengembangkan modul kustom Odoo dalam waktu 48 jam.\n\nTim ERPify berhasil meraih juara 2 dengan mengembangkan modul manajemen aset sekolah yang terintegrasi dengan Odoo Accounting. Modul ini dinilai inovatif dan siap diimplementasikan.\n\nHackathon ini menjadi ajang pembuktian kemampuan programming dan problem solving mahasiswa dalam ekosistem Odoo.', foto:'' },
+            { id:15, icon:'fas fa-hand-holding-heart', date:'2026-04-05T10:00:00.000Z', dateDisplay:'5 April 2026, 10:00', title:'ERPify Mengadakan Bakti Sosial dan Pelatihan ERP untuk UMKM', desc:'Kegiatan bakti sosial dan pelatihan ERP gratis untuk pelaku UMKM di sekitar kampus.', fullDesc:'ERPify mengadakan kegiatan bakti sosial yang dikombinasikan dengan pelatihan ERP gratis untuk pelaku UMKM di sekitar kampus. Kegiatan ini merupakan bentuk kontribusi laboratorium kepada masyarakat.\n\nPelatihan mencakup pengenalan sistem ERP sederhana untuk manajemen stok, penjualan, dan keuangan menggunakan Odoo. Pelaku UMKM sangat antusias karena materi disesuaikan dengan kebutuhan bisnis mereka.\n\nKegiatan ini juga melibatkan mahasiswa sebagai fasilitator, sehingga mereka mendapatkan pengalaman mengajar dan berinteraksi langsung dengan pelaku usaha.', foto:'' },
+            { id:16, icon:'fas fa-scroll', date:'2026-04-01T11:00:00.000Z', dateDisplay:'1 April 2026, 11:00', title:'Penerbitan Jurnal Ilmiah ERP oleh Tim Dosen ERPify', desc:'Tim dosen ERPify berhasil menerbitkan jurnal ilmiah tentang implementasi ERP di sektor pendidikan.', fullDesc:'Tim dosen ERPify berhasil menerbitkan jurnal ilmiah internasional yang membahas tentang implementasi sistem ERP di sektor pendidikan tinggi. Jurnal ini terbit di jurnal terindeks Scopus.\n\nPenelitian ini melibatkan survei terhadap 50 perguruan tinggi di Indonesia yang telah mengimplementasikan sistem ERP. Hasil penelitian menunjukkan bahwa adopsi ERP meningkatkan efisiensi operasional hingga 40%.\n\nPublikasi ini menjadi bukti kontribusi ERPify dalam pengembangan ilmu pengetahuan di bidang sistem informasi dan ERP.', foto:'' }
+        ],
+
+
+
+        sertifikatSAP: [
+            { nomor:'SAP-2026-0001', nama:'Ahmad Rizki', nim:'2201001', angkatan:'2022', kelas:'A', jenis:'SAP S/4HANA Associate', nilai:'A', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
+            { nomor:'SAP-2026-0002', nama:'Siti Nurhaliza', nim:'2201002', angkatan:'2022', kelas:'A', jenis:'SAP FI Associate', nilai:'A-', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' },
+            { nomor:'SAP-2026-0003', nama:'Budi Prasetyo', nim:'2201003', angkatan:'2022', kelas:'B', jenis:'SAP ABAP Professional', nilai:'B+', status:'Sudah Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
+            { nomor:'SAP-2026-0004', nama:'Dewi Lestari', nim:'2201004', angkatan:'2022', kelas:'A', jenis:'SAP MM Associate', nilai:'A', status:'Belum Bisa Diambil', diambil:'Belum Diambil', foto:'', pdf:'' },
+            { nomor:'SAP-2026-0005', nama:'Rudi Hartono', nim:'2201005', angkatan:'2022', kelas:'B', jenis:'SAP SD Professional', nilai:'B', status:'Sudah Bisa Diambil', diambil:'Sudah Diambil', foto:'', pdf:'' }
+        ],
+
+
+        kegiatanLab: [
+            { bulan:'Jan', jumlah:5 },
+            { bulan:'Feb', jumlah:8 },
+            { bulan:'Mar', jumlah:12 },
+            { bulan:'Apr', jumlah:7 },
+            { bulan:'Mei', jumlah:15 },
+            { bulan:'Jun', jumlah:10 }
+        ]
+    };
+}
+
+function getLocalData() {
+    // RESET TOTAL: selalu pakai data default baru
+    // Data lama di localStorage akan dihapus dan diganti dengan data default terbaru
+    const fresh = getDefaultData();
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+        try {
+            const parsed = JSON.parse(stored);
+            // Ambil data yang sudah dimodifikasi admin (platform, dosen, mitra, dll)
+            // Tapi PAKSA adminAccount dari data default (password terbaru)
+            fresh.adminAccount = parsed.adminAccount || fresh.adminAccount;
+            // Update password ke yang terbaru
+            fresh.adminAccount.password = 'erpify123';
+            fresh.adminAccount.username = 'admin';
+            // Ambil data lainnya dari localStorage jika ada
+            if (parsed.platforms) fresh.platforms = parsed.platforms;
+            if (parsed.dosen) fresh.dosen = parsed.dosen;
+            if (parsed.mitra) fresh.mitra = parsed.mitra;
+            if (parsed.generasi) fresh.generasi = parsed.generasi;
+            if (parsed.berita) fresh.berita = parsed.berita;
+            if (parsed.sertifikatSAP) fresh.sertifikatSAP = parsed.sertifikatSAP;
+            if (parsed.kegiatanLab) fresh.kegiatanLab = parsed.kegiatanLab;
+            if (parsed.pageSettings) fresh.pageSettings = parsed.pageSettings;
+            if (parsed.pageOrder) fresh.pageOrder = parsed.pageOrder;
+            // Simpan kembali data yang sudah diperbaiki
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+            return fresh;
+        } catch(e) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+            return fresh;
+        }
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+    return fresh;
+}
+
+
+
+// Data aktif: dari API bila tersedia, jika tidak dari localStorage/default
+function getData() {
+    if (!erpifyDataCache) {
+        erpifyDataCache = getLocalData();
+    }
+    return erpifyDataCache;
+}
+
+function saveData(data) {
+    erpifyDataCache = data;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+    if (!erpifyApiAvailable) return;
+    // Kredensial admin tidak dikirim ke server: password dikelola di tabel erpify_admin
+    let payload = data;
+    if (payload && payload.adminAccount) {
+        payload = Object.assign({}, payload);
+        delete payload.adminAccount;
+    }
+    erpifyApiFetch('data.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload })
+    }).then(function(res) {
+        return res.json().then(function(json) {
+            return { status: res.status, json: json };
+        }).catch(function() {
+            return { status: res.status, json: null };
+        });
+    }).then(function(r) {
+        if (!r.json || r.json.ok !== true) {
+            if (r.status === 401) {
+                erpifyToast('Sesi admin berakhir. Silakan login ulang - perubahan terakhir belum tersimpan di server.', 'error');
+            } else {
+                erpifyToast((r.json && r.json.error) ? r.json.error : 'Gagal menyimpan data ke server.', 'error');
+            }
+        }
+    }).catch(function() {
+        erpifyToast('Tidak dapat terhubung ke server. Perubahan belum tersimpan permanen.', 'error');
+    });
+}
+
+// ===== NAVBAR TOGGLE & SCROLL =====
+function initNavbar() {
+    const toggle = document.getElementById('navToggle');
+    const menu = document.getElementById('navMenu');
+    if (toggle && menu) {
+        toggle.addEventListener('click', function(){
+            this.classList.toggle('active');
+            menu.classList.toggle('active');
+        });
+    }
+    document.querySelectorAll('.nav-menu a').forEach(l=>l.addEventListener('click',()=>{
+        if (toggle && menu) { toggle.classList.remove('active'); menu.classList.remove('active'); }
+    }));
+    document.querySelectorAll('.nav-dropdown > a').forEach(el => {
+        el.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) { e.preventDefault(); this.parentElement.classList.toggle('open'); }
+        });
+    });
+    window.addEventListener('scroll',()=>{
+        const nav = document.getElementById('navbar');
+        if (nav) nav.classList.toggle('scrolled', window.scrollY > 50);
+    });
+}
+
+function initFadeIn() {
+    const observer = new IntersectionObserver((entries)=>{
+        entries.forEach(e=>{
+            if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+        });
+    }, {threshold:0.1});
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+}
+
+// ===== PLATFORMS =====
+function renderPlatforms() {
+    const data = getData();
+    const grid = document.getElementById('platformsGrid');
+    if (!grid) return;
+    grid.innerHTML = data.platforms.map(p => `<div class="platform-card fade-in"><div class="icon"><i class="${p.icon}"></i></div><h4>${p.name}</h4><p>${p.desc}</p></div>`).join('');
+}
+
+// ===== DOSEN =====
+function renderDosen() {
+    const data = getData();
+    const grid = document.getElementById('dosenGrid');
+    if (!grid) return;
+    grid.innerHTML = data.dosen.map(d => `<div class="dosen-card fade-in"><div class="photo" style="${d.foto?'background:transparent;':''}">${d.foto?`<img src="${d.foto}" alt="${d.nama}" style="width:100%;height:100%;object-fit:cover;">`:'<i class="fas fa-user-tie"></i>'}</div><div class="info"><h4>${d.nama}</h4><div class="jabatan">${d.jabatan}</div><div class="keahlian">${d.keahlian}</div><div class="tags">${d.tags.map(t=>`<span>${t}</span>`).join('')}</div></div></div>`).join('');
+}
+
+// ===== MITRA =====
+function renderMitra() {
+    const data = getData();
+    const grid = document.getElementById('mitraGrid');
+    if (!grid) return;
+    grid.innerHTML = data.mitra.map(m => `<div class="mitra-logo-item"><i class="fas fa-building" style="margin-right:8px;color:var(--blue);"></i>${m}</div>`).join('');
+}
+
+// Statistik jumlah mitra untuk hero halaman kerjasama
+function renderMitraStats() {
+    const data = getData();
+    const el = document.getElementById('mitraTotalCount');
+    if (el) el.textContent = data.mitra.length;
+}
+
+// ===== GENERASI & ANGGOTA =====
+function renderGenerasiSelect() {
+    const data = getData();
+    const select = document.getElementById('generasiSelect');
+    if (!select) return;
+    select.innerHTML = Object.keys(data.generasi).map(k => `<option value="${k}">${data.generasi[k].title}</option>`).join('');
+    renderAnggota(select.value);
+}
+
+function renderAnggota(genKey) {
+    const data = getData();
+    const gen = data.generasi[genKey];
+    if (!gen) return;
+    const title = document.getElementById('genTitle');
+    const desc = document.getElementById('genDesc');
+    if (title) title.textContent = gen.title;
+    if (desc) desc.textContent = gen.desc;
+    const grid = document.getElementById('anggotaGrid');
+    if (!grid) return;
+    grid.innerHTML = gen.anggota.map(a => `<div class="anggota-card fade-in"><div class="avatar" style="${a.foto?'background:transparent;padding:0;overflow:hidden;':''}">${a.foto?`<img src="${a.foto}" alt="${a.nama}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:a.nama.charAt(0)}</div><h4>${a.nama}</h4><div class="nim">${a.nim}</div><div class="jabatan-anggota">${a.jabatan}</div><div class="divisi">${a.divisi}</div></div>`).join('');
+    setTimeout(() => document.querySelectorAll('#anggotaGrid .fade-in').forEach(el => el.classList.add('visible')), 100);
+}
+
+// ===== BERITA =====
+function renderBerita() {
+    const data = getData();
+    const grid = document.getElementById('beritaGrid');
+    if (!grid) return;
+    // Cek apakah ini halaman beranda (index.html) atau halaman berita (berita.html)
+    const isBeranda = !document.body.dataset.page || document.body.dataset.page === 'beranda';
+    const beritaToShow = isBeranda ? data.berita.slice(0, 6) : data.berita;
+    grid.innerHTML = beritaToShow.map(b => `<div class="berita-card fade-in"><div class="thumbnail" style="${b.foto?'background:transparent;':''}">${b.foto?`<img src="${b.foto}" alt="${b.title}" style="width:100%;height:100%;object-fit:cover;">`:`<i class="${b.icon}"></i>`}</div><div class="content"><div class="date"><i class="far fa-calendar"></i> ${b.dateDisplay || b.date}</div><h4>${b.title}</h4><p>${b.desc}</p><a href="javascript:void(0)" class="read-more" onclick="openBeritaModal(${b.id})">Baca Selengkapnya <i class="fas fa-arrow-right"></i></a></div></div>`).join('');
+
+    // Jika di halaman beranda dan berita lebih dari 6, tambahkan link "Lihat Berita Lainnya"
+    if (isBeranda && data.berita.length > 6) {
+        const linkWrap = document.createElement('div');
+        linkWrap.style.cssText = 'text-align:center;margin-top:32px;';
+        linkWrap.innerHTML = '<a href="berita.html" class="btn btn-primary-outline"><i class="fas fa-newspaper"></i> Lihat Berita Lainnya <i class="fas fa-arrow-right"></i></a>';
+        grid.parentNode.appendChild(linkWrap);
+    }
+}
+
+
+// ===== BERITA MODAL =====
+function openBeritaModal(id) {
+    const data = getData();
+    const b = data.berita.find(x => x.id === id);
+    if (!b) return;
+    const overlay = document.getElementById('beritaModalOverlay');
+    if (!overlay) return;
+    const img = document.getElementById('beritaModalImg');
+    if (img) { img.src = b.foto || ''; img.style.display = b.foto ? 'block' : 'none'; }
+    const dateEl = document.getElementById('beritaModalDate');
+    if (dateEl) dateEl.textContent = b.dateDisplay || b.date;
+
+    const titleEl = document.getElementById('beritaModalTitle');
+    if (titleEl) titleEl.textContent = b.title;
+    const descEl = document.getElementById('beritaModalDesc');
+    if (descEl) descEl.textContent = b.fullDesc || b.desc;
+    overlay.classList.add('active');
+}
+
+function closeBeritaModal() {
+    const overlay = document.getElementById('beritaModalOverlay');
+    if (overlay) overlay.classList.remove('active');
+}
+
+// ===== MATA KULIAH =====
+function renderMK() {
+    const grid = document.getElementById('mkGrid');
+    if (!grid) return;
+    const mkData = [
+        { icon:'fas fa-users-cog', name:'Human Resources (ERP HR)', code:'HRM - ERP', desc:'Mempelajari sistem manajemen SDM berbasis ERP, meliputi rekrutmen, payroll, manajemen kinerja.', kompetensi:['Konfigurasi modul HR Odoo & SAP','Manajemen data karyawan terpusat','Proses payroll dan benefit otomatis'] },
+        { icon:'fas fa-truck', name:'Supply Chain Management (SCM ERP)', code:'SCM - ERP', desc:'Mendalami manajemen rantai pasok enterprise, dari procurement, inventory, warehouse, hingga distribusi.', kompetensi:['Manajemen inventori multi-warehouse','Optimasi supply chain dengan ERP','Integrasi procurement & vendor'] },
+        { icon:'fas fa-server', name:'Sistem Enterprise', code:'SIE - ERP', desc:'Konsep dasar dan implementasi sistem enterprise skala perusahaan. Arsitektur ERP dan best practice.', kompetensi:['Arsitektur dan modul ERP','Metodologi implementasi ERP','Business process reengineering'] },
+        { icon:'fas fa-calculator', name:'Accounting (ERP Akuntansi)', code:'ACC - ERP', desc:'Sistem akuntansi dan keuangan berbasis ERP. General ledger, AP/AR, fixed asset, financial reporting.', kompetensi:['Konfigurasi modul akuntansi ERP','Financial reporting & analisis','Manajemen pajak dan audit'] },
+        { icon:'fas fa-code', name:'Configuration ABAP', code:'ABAP - ERP', desc:'Konfigurasi dan pemrograman dasar ABAP untuk SAP ERP. Dictionary, report, module pool.', kompetensi:['Dasar pemrograman ABAP','SAP Dictionary & Data Element','Report & Module Pool Programming'] }
+    ];
+    grid.innerHTML = mkData.map(m => `<div class="mk-card fade-in"><div class="icon"><i class="${m.icon}"></i></div><h4>${m.name}</h4><div class="mk-code">${m.code}</div><p>${m.desc}</p><div class="kompetensi"><h5>Kompetensi:</h5><ul>${m.kompetensi.map(k=>`<li><i class="fas fa-check-circle"></i> ${k}</li>`).join('')}</ul></div></div>`).join('');
+}
+
+// ===== CEK SERTIFIKAT =====
+function cekSertifikat() {
+    const input = document.getElementById('sertifikatInput');
+    const result = document.getElementById('sertifikatResult');
+    if (!input || !result) return;
+    const nomor = input.value.trim();
+    if (!nomor) {
+        result.className = 'sertifikat-result invalid';
+        result.innerHTML = '<i class="fas fa-exclamation-circle"></i><h4>Masukkan Nomor Sertifikat</h4><p>Silakan masukkan nomor sertifikat SAP terlebih dahulu.</p>';
+        return;
+    }
+    const data = getData();
+    const found = data.sertifikatSAP.find(s => s.nomor.toLowerCase() === nomor.toLowerCase());
+    if (found) {
+        const sudahDiambil = found.diambil === 'Sudah Diambil';
+        const statusAmbil = found.status === 'Sudah Bisa Diambil'
+            ? '<span style="color:#16a34a;font-weight:600;"><i class="fas fa-check-circle"></i> Sertifikat sudah bisa diambil</span>'
+            : '<span style="color:#d97706;font-weight:600;"><i class="fas fa-clock"></i> Sertifikat belum bisa diambil</span>';
+        const statusDiambil = sudahDiambil
+            ? '<span style="color:#16a34a;font-weight:600;"><i class="fas fa-check-double"></i> Sertifikat SUDAH DIAMBIL</span>'
+            : '<span style="color:#d97706;font-weight:600;"><i class="fas fa-box"></i> Sertifikat BELUM DIAMBIL</span>';
+        
+        const fotoHtml = found.foto ? '<img src="'+found.foto+'" class="sertifikat-foto" alt="Foto Sertifikat '+found.nomor+'">' : '';
+
+        let detailHtml = '<div style="text-align:left;margin-top:16px;"><p><strong>Kode Sertifikat:</strong> '+found.nomor+'</p><p><strong>Nama Lengkap:</strong> '+found.nama+'</p><p><strong>NIM:</strong> '+found.nim+'</p><p><strong>Angkatan:</strong> '+found.angkatan+'</p><p><strong>Kelas:</strong> '+(found.kelas||'-')+'</p><p><strong>Jenis Sertifikasi:</strong> '+found.jenis+'</p><p><strong>Nilai:</strong> '+found.nilai+'</p><p><strong>Status Pengambilan:</strong> '+statusDiambil+'</p>';
+        
+        // Jika sudah diambil, tidak perlu tampilkan status kelayakan dan info pembayaran
+        if (!sudahDiambil) {
+            detailHtml += '<p><strong>Status Kelayakan:</strong> '+statusAmbil+'</p></div>';
+            detailHtml += '<div style="margin-top:20px;padding:16px;background:rgba(32,122,224,0.08);border-radius:10px;text-align:left;"><p style="font-weight:600;color:var(--navy);margin-bottom:8px;"><i class="fas fa-info-circle"></i> Informasi Pembayaran Sertifikat</p><p style="font-size:0.875rem;color:var(--gray-600);margin-bottom:0;">Silakan lakukan pembayaran biaya sertifikat ke rekening <strong>Bank Mandiri 123-00-4567890 a.n. Laboratorium ERPify</strong>. Setelah transfer, silakan konfirmasi bukti bayar ke nomor admin WhatsApp <strong>+62 812-3456-7890</strong>.</p></div>';
+        } else {
+            detailHtml += '</div>';
+        }
+        
+        // Tombol lihat file PDF sertifikat (muncul hanya jika file PDF-nya tersedia)
+        const pdfUrl = getSertifikatPdfUrl(found);
+        const pdfHtml = '<div class="sertifikat-actions" id="sertifikatPdfWrap" style="display:none;"><a class="btn btn-primary" id="sertifikatPdfBtn" href="'+pdfUrl+'" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Lihat Sertifikat (PDF)</a></div>';
+
+        result.className = 'sertifikat-result valid';
+        result.innerHTML = '<i class="fas fa-check-circle"></i><h4>Sertifikat DITEMUKAN</h4>'+fotoHtml+detailHtml+pdfHtml;
+        initSertifikatPdfButton(pdfUrl);
+
+    } else {
+        result.className = 'sertifikat-result invalid';
+        result.innerHTML = '<i class="fas fa-times-circle"></i><h4>Sertifikat TIDAK DITEMUKAN</h4><p>Nomor sertifikat "<strong>'+nomor+'</strong>" tidak terdaftar di sistem ERPify. Silakan periksa kembali nomor sertifikat Anda atau hubungi admin laboratorium.</p>';
+    }
+}
+
+
+// ===== FILE PDF SERTIFIKAT =====
+const SERTIFIKAT_PDF_DIR = 'sertifikat/';
+
+// URL PDF sertifikat: pakai field 'pdf' bila diisi admin,
+// jika kosong otomatis memakai konvensi sertifikat/<KODE>.pdf
+function getSertifikatPdfUrl(sertifikat) {
+    if (!sertifikat || !sertifikat.nomor) return '';
+    if (sertifikat.pdf) return sertifikat.pdf;
+    return SERTIFIKAT_PDF_DIR + sertifikat.nomor + '.pdf';
+}
+
+// Tombol PDF hanya ditampilkan kalau file-nya benar-benar ada
+function initSertifikatPdfButton(url) {
+    const wrap = document.getElementById('sertifikatPdfWrap');
+    if (!wrap || !url) return;
+    // Data URL (hasil upload di browser) atau URL absolut/relatif backend -> tampilkan langsung
+    if (url.indexOf('data:') === 0 || url.indexOf('://') > -1 || url.charAt(0) === '/') {
+        wrap.style.display = 'block';
+        return;
+    }
+    // Cek keberadaan file; kalau tidak ada, tombol dibiarkan tersembunyi
+    if (typeof fetch !== 'function' || window.location.protocol === 'file:') return;
+    fetch(url, { method: 'HEAD', cache: 'no-store' })
+        .then(function(res) { if (res && res.ok) wrap.style.display = 'block'; })
+        .catch(function() {});
+}
+
+// Upload PDF dari panel admin
+function handleSertifikatPdfUpload(input) {
+    const status = document.getElementById('srPdfStatus');
+    const pdfInput = document.getElementById('srPdf');
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        alert('File harus berformat PDF!');
+        input.value = '';
+        return;
+    }
+    if (typeof uploadFileToApi === 'function' && typeof apiIsEnabled === 'function' && apiIsEnabled()) {
+        if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
+        uploadFileToApi(file, 'sertifikat').then(function(res) {
+            if (res && res.url) {
+                if (pdfInput) pdfInput.value = res.url;
+                if (status) status.innerHTML = '<i class="fas fa-check-circle" style="color:#16a34a;"></i> Terunggah: ' + (res.fileName || res.url);
+            } else {
+                if (status) status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah.';
+            }
+        }).catch(function() {
+            if (status) status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah (server tidak merespons).';
+        });
+        return;
+    }
+    // Tanpa backend: file tidak bisa disimpan permanen, arahkan upload manual
+    if (status) status.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#d97706;"></i> Backend belum aktif. Upload file <strong>' + file.name + '</strong> lewat File Manager Hostinger ke folder <strong>sertifikat/</strong>, lalu isi kolom di atas dengan <strong>sertifikat/' + file.name + '</strong>.';
+    input.value = '';
+}
+
+
+function applyPageSettings() {
+    const data = getData();
+    const page = document.body.dataset.page;
+    if (!page) return;
+    const setting = data.pageSettings[page];
+    if (!setting) return;
+    // Coba cari di page-hero (halaman dalam) atau hero-text p (halaman beranda)
+    let heroP = document.querySelector('.page-hero p');
+    if (!heroP) {
+        heroP = document.querySelector('.hero-text p');
+    }
+    if (!heroP) return;
+    
+    let html = '';
+    if (setting.subtitle) {
+        html += setting.subtitle;
+    }
+    // Render dropdown items jika ada
+    if (setting.dropdownItems && setting.dropdownItems.length > 0) {
+        html += '<div class="hero-dropdown-wrap">';
+        setting.dropdownItems.forEach((item, idx) => {
+            const isOpen = item._open || false;
+            html += '<div class="hero-dropdown-item'+(isOpen?' open':'')+'">';
+            html += '<button class="hero-dropdown-btn" onclick="toggleHeroDropdown(this)">';
+            html += '<span>'+item.label+'</span>';
+            html += '<i class="fas fa-chevron-down"></i>';
+            html += '</button>';
+            html += '<div class="hero-dropdown-content" style="display:'+(isOpen?'block':'none')+';">'+item.content+'</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    heroP.innerHTML = html;
+}
+
+function toggleHeroDropdown(btn) {
+    const parent = btn.parentElement;
+    const content = parent.querySelector('.hero-dropdown-content');
+    if (content) {
+        const isOpen = content.style.display === 'block';
+        content.style.display = isOpen ? 'none' : 'block';
+        parent.classList.toggle('open', !isOpen);
+    }
+}
+
+
+
+// ============================================================
+// ADMIN FUNCTIONS
+// ============================================================
+let nextId = 100;
+
+function openModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add('active');
+}
+
+function closeModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+    }
+});
+
+// ===== ICON SELECT DROPDOWN =====
+function updateIconPreview(selectEl, previewId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    const val = selectEl.value;
+    preview.innerHTML = '<i class="'+val+'"></i> <span>'+val+'</span>';
+}
+
+function setupUpload(inputId, previewId, wrapperId) {
+
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    const wrapper = document.getElementById(wrapperId);
+    if (!input || !preview || !wrapper) return;
+
+    const tampilkan = function(src) {
+        preview.src = src;
+        preview.style.display = 'block';
+        wrapper.classList.add('has-image');
+        const icon = wrapper.querySelector('i');
+        const p = wrapper.querySelector('p');
+        if (icon) icon.style.display = 'none';
+        if (p) p.style.display = 'none';
+    };
+
+    // Klik wrapper trigger input file
+    wrapper.addEventListener('click', function(e) {
+        if (e.target !== input) {
+            input.click();
+        }
+    });
+
+    input.addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        const kategori = ERPIFY_UPLOAD_CATEGORY[inputId] || 'umum';
+        // Backend aktif: unggah ke server supaya file tersimpan permanen
+        if (apiIsEnabled()) {
+            const infoLama = wrapper.querySelector('p') ? wrapper.querySelector('p').innerHTML : '';
+            if (infoLama && wrapper.querySelector('p')) wrapper.querySelector('p').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
+            uploadFileToApi(file, kategori).then(function(res) {
+                tampilkan(res.url);
+                erpifyToast('File berhasil diunggah ke server.', 'success');
+            }).catch(function(err) {
+                erpifyToast('Upload gagal: ' + (err && err.message ? err.message : 'kesalahan tidak diketahui'), 'error');
+                if (wrapper.querySelector('p')) wrapper.querySelector('p').innerHTML = infoLama;
+            });
+            return;
+        }
+        // Tanpa backend: simpan sementara di browser (localStorage)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            tampilkan(e.target.result);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    const totalKegiatan = data.kegiatanLab.reduce((sum, k) => sum + k.jumlah, 0);
+    const totalBerita = data.berita.length;
+    const totalAnggota = Object.values(data.generasi).reduce((sum, g) => sum + g.anggota.length, 0);
+    const totalSertifikat = data.sertifikatSAP.length;
+    const totalMitra = data.mitra.length;
+    const maxKegiatan = Math.max(...data.kegiatanLab.map(k => k.jumlah), 1);
+    container.innerHTML = '<div class="dashboard-grid">'+
+        '<div class="dashboard-card"><div class="d-icon blue"><i class="fas fa-flask"></i></div><div class="d-number">'+totalKegiatan+'</div><div class="d-label">Total Kegiatan Lab</div></div>'+
+        '<div class="dashboard-card"><div class="d-icon green"><i class="fas fa-newspaper"></i></div><div class="d-number">'+totalBerita+'</div><div class="d-label">Total Berita Terbit</div></div>'+
+        '<div class="dashboard-card"><div class="d-icon orange"><i class="fas fa-users"></i></div><div class="d-number">'+totalAnggota+'</div><div class="d-label">Total Anggota Lab</div></div>'+
+        '<div class="dashboard-card"><div class="d-icon purple"><i class="fas fa-certificate"></i></div><div class="d-number">'+totalSertifikat+'</div><div class="d-label">Total Sertifikat</div></div>'+
+        '<div class="dashboard-card"><div class="d-icon teal"><i class="fas fa-handshake"></i></div><div class="d-number">'+totalMitra+'</div><div class="d-label">Mitra Perusahaan</div></div>'+
+        '</div><div class="chart-container"><h4><i class="fas fa-chart-bar"></i> Grafik Peningkatan Kegiatan Bulanan</h4><div class="chart-bars">'+
+        data.kegiatanLab.map(k => '<div class="chart-bar"><div class="bar-value">'+k.jumlah+'</div><div class="bar" style="height:'+((k.jumlah/maxKegiatan)*140)+'px;background:linear-gradient(180deg,var(--blue),var(--blue-light));"></div><div class="bar-label">'+k.bulan+'</div></div>').join('')+
+        '</div></div><div style="text-align:center;color:var(--gray-400);font-size:0.875rem;"><i class="fas fa-sync-alt"></i> Data real-time terupdate dari sistem ERPify</div>';
+}
+
+// ===== ADMIN PLATFORM =====
+function renderAdminPlatform() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalPlatform()"><i class="fas fa-plus"></i> Tambah Platform</button></div><div class="admin-list">'+
+        data.platforms.map(p => '<div class="admin-item"><i class="'+p.icon+'" style="font-size:1.5rem;color:var(--blue);width:40px;text-align:center;"></i><div class="info"><strong>'+p.name+'</strong><br><small>'+p.desc.substring(0,80)+'...</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalPlatform('+p.id+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deletePlatform('+p.id+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+}
+
+function showModalPlatform(id) {
+    const data = getData();
+    const p = id ? data.platforms.find(x => x.id === id) : null;
+    document.getElementById('modalPlatformTitle').textContent = p ? 'Edit Platform' : 'Tambah Platform Baru';
+    document.getElementById('pfId').value = p ? p.id : '';
+    document.getElementById('pfName').value = p ? p.name : '';
+    document.getElementById('pfDesc').value = p ? p.desc : '';
+    document.getElementById('pfIcon').value = p ? p.icon : 'fas fa-cube';
+    openModal('modalPlatform');
+}
+
+function savePlatform() {
+    const data = getData();
+    const id = document.getElementById('pfId').value;
+    const name = document.getElementById('pfName').value.trim();
+    const desc = document.getElementById('pfDesc').value.trim();
+    const icon = document.getElementById('pfIcon').value.trim() || 'fas fa-cube';
+    if (!name || !desc) { alert('Nama dan deskripsi harus diisi!'); return; }
+    if (id) {
+        const p = data.platforms.find(x => x.id === parseInt(id));
+        if (p) { p.name = name; p.desc = desc; p.icon = icon; }
+    } else {
+        data.platforms.push({ id: ++nextId, icon, name, desc, foto: '' });
+    }
+    saveData(data);
+    closeModal('modalPlatform');
+    renderAdminContent();
+}
+
+function deletePlatform(id) {
+    if (!confirm('Hapus platform ini?')) return;
+    const data = getData();
+    data.platforms = data.platforms.filter(p => p.id !== id);
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN DOSEN =====
+function renderAdminDosen() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalDosen()"><i class="fas fa-plus"></i> Tambah Dosen</button></div><div class="admin-list">'+
+        data.dosen.map(d => '<div class="admin-item"><div style="width:40px;height:40px;border-radius:50%;background:'+(d.foto?'transparent':'var(--blue)')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;">'+(d.foto?'<img src="'+d.foto+'" style="width:100%;height:100%;object-fit:cover;">':d.nama.charAt(0))+'</div><div class="info"><strong>'+d.nama+'</strong><br><small>'+d.jabatan+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalDosen('+d.id+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteDosen('+d.id+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+}
+
+function showModalDosen(id) {
+    const data = getData();
+    const d = id ? data.dosen.find(x => x.id === id) : null;
+    document.getElementById('modalDosenTitle').textContent = d ? 'Edit Dosen' : 'Tambah Dosen Baru';
+    document.getElementById('dsId').value = d ? d.id : '';
+    document.getElementById('dsNama').value = d ? d.nama : '';
+    document.getElementById('dsJabatan').value = d ? d.jabatan : '';
+    document.getElementById('dsKeahlian').value = d ? d.keahlian : '';
+    document.getElementById('dsTags').value = d ? d.tags.join(', ') : 'SAP, Odoo';
+    const preview = document.getElementById('dsFotoPreview');
+    const wrapper = document.getElementById('dsFotoWrapper');
+    if (preview) { preview.style.display = 'none'; preview.src = ''; }
+    if (wrapper) { wrapper.classList.remove('has-image'); const i=wrapper.querySelector('i'); const p=wrapper.querySelector('p'); if(i)i.style.display=''; if(p)p.style.display=''; }
+    openModal('modalDosen');
+}
+
+function saveDosen() {
+    const data = getData();
+    const id = document.getElementById('dsId').value;
+    const nama = document.getElementById('dsNama').value.trim();
+    const jabatan = document.getElementById('dsJabatan').value.trim();
+    const keahlian = document.getElementById('dsKeahlian').value.trim();
+    const tags = document.getElementById('dsTags').value.split(',').map(t => t.trim()).filter(t => t);
+    if (!nama || !jabatan) { alert('Nama dan jabatan harus diisi!'); return; }
+    const preview = document.getElementById('dsFotoPreview');
+    const foto = getUploadPreviewValue('dsFotoPreview');
+    if (id) {
+        const d = data.dosen.find(x => x.id === parseInt(id));
+        if (d) { d.nama = nama; d.jabatan = jabatan; d.keahlian = keahlian; d.tags = tags; if (foto) d.foto = foto; }
+    } else {
+        data.dosen.push({ id: ++nextId, nama, jabatan, keahlian, tags, foto });
+    }
+    saveData(data);
+    closeModal('modalDosen');
+    renderAdminContent();
+}
+
+function deleteDosen(id) {
+    if (!confirm('Hapus dosen ini?')) return;
+    const data = getData();
+    data.dosen = data.dosen.filter(d => d.id !== id);
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN MITRA =====
+function renderAdminMitra() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalMitra()"><i class="fas fa-plus"></i> Tambah Mitra</button></div><div class="admin-list">'+
+        data.mitra.map((m, i) => '<div class="admin-item"><div class="info"><strong>'+m+'</strong></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalMitra('+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteMitra('+i+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+}
+
+function showModalMitra(index) {
+    const data = getData();
+    document.getElementById('modalMitraTitle').textContent = (index !== undefined && index !== null && index >= 0) ? 'Edit Mitra' : 'Tambah Mitra Baru';
+    document.getElementById('mtIndex').value = (index !== undefined && index !== null && index >= 0) ? index : '';
+    document.getElementById('mtName').value = (index !== undefined && index !== null && index >= 0) ? data.mitra[index] : '';
+    openModal('modalMitra');
+}
+
+function saveMitra() {
+    const data = getData();
+    const index = document.getElementById('mtIndex').value;
+    const name = document.getElementById('mtName').value.trim();
+    if (!name) { alert('Nama mitra harus diisi!'); return; }
+    if (index !== '') {
+        data.mitra[parseInt(index)] = name;
+    } else {
+        data.mitra.push(name);
+    }
+    saveData(data);
+    closeModal('modalMitra');
+    renderAdminContent();
+}
+
+function deleteMitra(index) {
+    if (!confirm('Hapus mitra ini?')) return;
+    const data = getData();
+    data.mitra.splice(index, 1);
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN ANGGOTA =====
+function renderAdminAnggota() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    const genKeys = Object.keys(data.generasi);
+    container.innerHTML = '<div style="text-align:center;margin-bottom:16px;"><label style="font-weight:600;margin-right:8px;">Pilih Generasi:</label><select id="adminGenSelect" class="generasi-select" style="min-width:250px;" onchange="renderAdminAnggotaList()">'+
+        genKeys.map(k => '<option value="'+k+'">'+data.generasi[k].title+'</option>').join('')+
+        '</select><button class="btn btn-success btn-sm" style="margin-left:8px;" onclick="showModalAnggota()"><i class="fas fa-plus"></i> Tambah</button></div><div id="adminAnggotaList"></div>';
+    renderAdminAnggotaList();
+}
+
+function renderAdminAnggotaList() {
+    const sel = document.getElementById('adminGenSelect');
+    if (!sel) return;
+    const genKey = sel.value;
+    const data = getData();
+    const gen = data.generasi[genKey];
+    if (!gen) return;
+    const list = document.getElementById('adminAnggotaList');
+    if (!list) return;
+    list.innerHTML = gen.anggota.map((a, i) => '<div class="admin-item" style="margin-bottom:8px;"><div style="width:36px;height:36px;border-radius:50%;background:'+(a.foto?'transparent':'linear-gradient(135deg,var(--blue),var(--navy))')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;overflow:hidden;">'+(a.foto?'<img src="'+a.foto+'" style="width:100%;height:100%;object-fit:cover;">':a.nama.charAt(0))+'</div><div class="info"><strong>'+a.nama+'</strong> ('+a.nim+')<br><small>'+a.jabatan+' - '+a.divisi+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAnggota(\''+genKey+'\','+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteAnggota(\''+genKey+'\','+i+')"><i class="fas fa-trash"></i></button></div></div>').join('');
+}
+
+function showModalAnggota(genKey, index) {
+    const data = getData();
+    let a = null;
+    if (genKey && index !== undefined && index !== null && index >= 0) {
+        a = data.generasi[genKey]?.anggota[index];
+    }
+    document.getElementById('modalAnggotaTitle').textContent = a ? 'Edit Anggota' : 'Tambah Anggota Baru';
+    document.getElementById('agGenKey').value = genKey || '';
+    document.getElementById('agIndex').value = (a ? index : '');
+    document.getElementById('agNama').value = a ? a.nama : '';
+    document.getElementById('agNim').value = a ? a.nim : '';
+    document.getElementById('agJabatan').value = a ? a.jabatan : 'Anggota';
+    document.getElementById('agDivisi').value = a ? a.divisi : 'Odoo';
+    const preview = document.getElementById('agFotoPreview');
+    const wrapper = document.getElementById('agFotoWrapper');
+    if (preview) { preview.style.display = 'none'; preview.src = ''; }
+    if (wrapper) { wrapper.classList.remove('has-image'); const i=wrapper.querySelector('i'); const p=wrapper.querySelector('p'); if(i)i.style.display=''; if(p)p.style.display=''; }
+    openModal('modalAnggota');
+}
+
+function saveAnggota() {
+    const data = getData();
+    const genKey = document.getElementById('agGenKey').value;
+    const index = document.getElementById('agIndex').value;
+    const nama = document.getElementById('agNama').value.trim();
+    const nim = document.getElementById('agNim').value.trim();
+    const jabatan = document.getElementById('agJabatan').value.trim();
+    const divisi = document.getElementById('agDivisi').value.trim();
+    if (!nama || !nim) { alert('Nama dan NIM harus diisi!'); return; }
+    const preview = document.getElementById('agFotoPreview');
+    const foto = getUploadPreviewValue('agFotoPreview');
+    if (index !== '') {
+        const a = data.generasi[genKey]?.anggota[parseInt(index)];
+        if (a) { a.nama = nama; a.nim = nim; a.jabatan = jabatan || 'Anggota'; a.divisi = divisi || 'Odoo'; if (foto) a.foto = foto; }
+    } else {
+        const sel = document.getElementById('adminGenSelect');
+        const gk = sel ? sel.value : genKey;
+        if (!data.generasi[gk]) return;
+        data.generasi[gk].anggota.push({ nama, nim, jabatan: jabatan || 'Anggota', divisi: divisi || 'Odoo', foto });
+    }
+    saveData(data);
+    closeModal('modalAnggota');
+    renderAdminContent();
+}
+
+function deleteAnggota(genKey, index) {
+    if (!confirm('Hapus anggota ini?')) return;
+    const data = getData();
+    data.generasi[genKey]?.anggota.splice(index, 1);
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN BERITA =====
+function renderAdminBerita() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalBerita()"><i class="fas fa-plus"></i> Tambah Berita</button></div><div class="admin-list">'+
+        data.berita.map(b => '<div class="admin-item"><i class="'+b.icon+'" style="font-size:1.25rem;color:var(--blue);width:36px;text-align:center;"></i><div class="info"><strong>'+b.title+'</strong><br><small>'+b.date+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalBerita('+b.id+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteBerita('+b.id+')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+}
+
+function formatDateDisplay(datetimeStr) {
+    if (!datetimeStr) return '';
+    // Format: 2026-06-15T09:00 -> 15 Juni 2026, 09:00
+    try {
+        const d = new Date(datetimeStr);
+        if (isNaN(d.getTime())) return datetimeStr;
+        const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        const day = d.getDate();
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        return day + ' ' + month + ' ' + year + ', ' + hours + ':' + mins;
+    } catch(e) {
+        return datetimeStr;
+    }
+}
+
+function showModalBerita(id) {
+    const data = getData();
+    const b = id ? data.berita.find(x => x.id === id) : null;
+    document.getElementById('modalBeritaTitle').textContent = b ? 'Edit Berita' : 'Tambah Berita Baru';
+    document.getElementById('brId').value = b ? b.id : '';
+    document.getElementById('brTitle').value = b ? b.title : '';
+    document.getElementById('brDesc').value = b ? b.desc : '';
+    document.getElementById('brFullDesc').value = b ? (b.fullDesc || b.desc) : '';
+    // Konversi date display ke datetime-local format
+    if (b && b.date) {
+        try {
+            const d = new Date(b.date);
+            if (!isNaN(d.getTime())) {
+                // Format ke YYYY-MM-DDTHH:MM untuk input datetime-local
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const hours = String(d.getHours()).padStart(2, '0');
+                const mins = String(d.getMinutes()).padStart(2, '0');
+                document.getElementById('brDate').value = year + '-' + month + '-' + day + 'T' + hours + ':' + mins;
+            } else {
+                document.getElementById('brDate').value = '';
+            }
+        } catch(e) {
+            document.getElementById('brDate').value = '';
+        }
+    } else {
+        document.getElementById('brDate').value = '';
+    }
+    document.getElementById('brIcon').value = b ? b.icon : 'fas fa-newspaper';
+    // Update icon preview
+    const iconPreview = document.getElementById('brIconPreview');
+    if (iconPreview) {
+        const iconVal = document.getElementById('brIcon').value;
+        iconPreview.innerHTML = '<i class="'+iconVal+'"></i> <span>'+iconVal+'</span>';
+    }
+    const preview = document.getElementById('brFotoPreview');
+
+    const wrapper = document.getElementById('brFotoWrapper');
+    if (preview) { preview.style.display = 'none'; preview.src = ''; }
+    if (wrapper) { wrapper.classList.remove('has-image'); const i=wrapper.querySelector('i'); const p=wrapper.querySelector('p'); if(i)i.style.display=''; if(p)p.style.display=''; }
+    openModal('modalBerita');
+}
+
+function saveBerita() {
+    const data = getData();
+    const id = document.getElementById('brId').value;
+    const title = document.getElementById('brTitle').value.trim();
+    const desc = document.getElementById('brDesc').value.trim();
+    const fullDesc = document.getElementById('brFullDesc').value.trim();
+    const dateRaw = document.getElementById('brDate').value;
+    const icon = document.getElementById('brIcon').value.trim() || 'fas fa-newspaper';
+    if (!title || !desc) { alert('Judul dan deskripsi harus diisi!'); return; }
+    if (!dateRaw) { alert('Tanggal & Waktu harus diisi!'); return; }
+    // Simpan dalam format ISO untuk konsistensi
+    const dateISO = new Date(dateRaw).toISOString();
+    const dateDisplay = formatDateDisplay(dateRaw);
+    const preview = document.getElementById('brFotoPreview');
+    const foto = getUploadPreviewValue('brFotoPreview');
+    if (id) {
+        const b = data.berita.find(x => x.id === parseInt(id));
+        if (b) { b.title = title; b.desc = desc; b.fullDesc = fullDesc || desc; b.date = dateISO; b.dateDisplay = dateDisplay; b.icon = icon; if (foto) b.foto = foto; }
+    } else {
+        data.berita.push({ id: ++nextId, icon, date: dateISO, dateDisplay: dateDisplay, title, desc, fullDesc: fullDesc || desc, foto });
+    }
+    saveData(data);
+    closeModal('modalBerita');
+    renderAdminContent();
+}
+
+
+function deleteBerita(id) {
+    if (!confirm('Hapus berita ini?')) return;
+    const data = getData();
+    data.berita = data.berita.filter(b => b.id !== id);
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN GENERASI =====
+function renderAdminGenerasi() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><button class="btn btn-success btn-sm" onclick="showModalGenerasi()"><i class="fas fa-plus"></i> Tambah Generasi</button></div><div class="admin-list">'+
+        Object.entries(data.generasi).map(([key, gen]) => '<div class="admin-item"><div class="info"><strong>'+gen.title+'</strong><br><small>'+gen.desc.substring(0,60)+'... | '+gen.anggota.length+' anggota</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalGenerasi(\''+key+'\')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteGenerasi(\''+key+'\')"><i class="fas fa-trash"></i></button></div></div>').join('')+'</div>';
+}
+
+function showModalGenerasi(key) {
+    const data = getData();
+    const gen = key ? data.generasi[key] : null;
+    document.getElementById('modalGenerasiTitle').textContent = gen ? 'Edit Generasi' : 'Tambah Generasi Baru';
+    document.getElementById('gnKey').value = key || '';
+    document.getElementById('gnTitle').value = gen ? gen.title : '';
+    document.getElementById('gnDesc').value = gen ? gen.desc : '';
+    openModal('modalGenerasi');
+}
+
+function saveGenerasi() {
+    const data = getData();
+    const key = document.getElementById('gnKey').value;
+    const title = document.getElementById('gnTitle').value.trim();
+    const desc = document.getElementById('gnDesc').value.trim();
+    if (!title) { alert('Nama generasi harus diisi!'); return; }
+    if (key) {
+        const gen = data.generasi[key];
+        if (gen) { gen.title = title; gen.desc = desc; }
+    } else {
+        const newKey = 'gen' + Date.now();
+        data.generasi[newKey] = { title, desc, anggota: [] };
+    }
+    saveData(data);
+    closeModal('modalGenerasi');
+    renderAdminContent();
+}
+
+function deleteGenerasi(key) {
+    if (!confirm('Hapus generasi ini? Anggota di dalamnya juga akan terhapus.')) return;
+    const data = getData();
+    delete data.generasi[key];
+    saveData(data);
+    renderAdminContent();
+}
+
+// ===== ADMIN SERTIFIKASI =====
+function renderAdminSertifikasi() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    
+    // Ambil nilai filter dari session atau default
+    const searchVal = sessionStorage.getItem('erpify_sertifikat_search') || '';
+    const filterStatus = sessionStorage.getItem('erpify_sertifikat_status') || '';
+    const filterDiambil = sessionStorage.getItem('erpify_sertifikat_diambil') || '';
+    const filterAngkatan = sessionStorage.getItem('erpify_sertifikat_angkatan') || '';
+    
+    // Kumpulkan angkatan unik untuk filter dropdown
+    const angkatanSet = [...new Set(data.sertifikatSAP.map(s => s.angkatan).filter(Boolean))].sort();
+    
+    // Filter data
+    let filtered = data.sertifikatSAP;
+    if (searchVal) {
+        const q = searchVal.toLowerCase();
+        filtered = filtered.filter(s => 
+            s.nama.toLowerCase().includes(q) || 
+            s.nim.toLowerCase().includes(q) || 
+            s.nomor.toLowerCase().includes(q) ||
+            s.jenis.toLowerCase().includes(q)
+        );
+    }
+    if (filterStatus) {
+        filtered = filtered.filter(s => s.status === filterStatus);
+    }
+    if (filterDiambil) {
+        filtered = filtered.filter(s => (s.diambil || 'Belum Diambil') === filterDiambil);
+    }
+    if (filterAngkatan) {
+        filtered = filtered.filter(s => s.angkatan === filterAngkatan);
+    }
+    
+    container.innerHTML = '<div class="table-actions"><button class="btn btn-success btn-sm" onclick="showModalSertifikasi()"><i class="fas fa-plus"></i> Tambah Data</button>'+
+        '<button class="btn btn-primary btn-sm" onclick="showImportModal()"><i class="fas fa-file-import"></i> Import CSV</button>'+
+        '<button class="btn btn-warning btn-sm" onclick="exportSertifikatCSV()"><i class="fas fa-file-export"></i> Export CSV</button>'+
+        '<button class="btn btn-success btn-sm" onclick="exportSertifikatExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>'+
+        '<span style="margin-left:auto;font-size:0.8125rem;color:var(--gray-400);">Total: '+filtered.length+'/'+data.sertifikatSAP.length+' sertifikat</span></div>'+
+        
+        // ===== FILTER & SEARCH BAR =====
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;background:var(--white);padding:16px;border-radius:12px;border:1px solid var(--gray-200);">'+
+        '<div style="flex:1;min-width:200px;position:relative;">'+
+        '<i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:0.875rem;"></i>'+
+        '<input type="text" id="sertifikatSearch" placeholder="Cari nama / NIM / kode / jenis..." value="'+searchVal+'" style="padding:10px 14px 10px 38px;border:1px solid var(--gray-300);border-radius:8px;width:100%;font-family:inherit;font-size:0.875rem;" oninput="filterSertifikatTable()">'+
+        '</div>'+
+        '<select id="filterSertifikatStatus" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'+
+        '<option value="">Semua Status Kelayakan</option>'+
+        '<option value="Sudah Bisa Diambil"'+(filterStatus==='Sudah Bisa Diambil'?' selected':'')+'>Sudah Bisa Diambil</option>'+
+        '<option value="Belum Bisa Diambil"'+(filterStatus==='Belum Bisa Diambil'?' selected':'')+'>Belum Bisa Diambil</option>'+
+        '</select>'+
+        '<select id="filterSertifikatDiambil" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:160px;" onchange="filterSertifikatTable()">'+
+        '<option value="">Semua Status Pengambilan</option>'+
+        '<option value="Sudah Diambil"'+(filterDiambil==='Sudah Diambil'?' selected':'')+'>Sudah Diambil</option>'+
+        '<option value="Belum Diambil"'+(filterDiambil==='Belum Diambil'?' selected':'')+'>Belum Diambil</option>'+
+        '</select>'+
+        '<select id="filterSertifikatAngkatan" style="padding:10px 14px;border:1px solid var(--gray-300);border-radius:8px;font-family:inherit;font-size:0.8125rem;min-width:140px;" onchange="filterSertifikatTable()">'+
+        '<option value="">Semua Angkatan</option>'+
+        angkatanSet.map(a => '<option value="'+a+'"'+(filterAngkatan===a?' selected':'')+'>'+a+'</option>').join('')+
+        '</select>'+
+        '<button class="btn btn-sm btn-secondary" onclick="resetFilterSertifikat()"><i class="fas fa-undo"></i> Reset</button>'+
+        '</div>'+
+        
+        '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Foto</th><th>Kode Sertifikasi</th><th>Nama Mahasiswa</th><th>NIM</th><th>Angkatan</th><th>Kelas</th><th>Jenis Sertifikasi</th><th>Nilai</th><th>Status Kelayakan</th><th>Status Pengambilan</th><th>Aksi</th></tr></thead><tbody id="sertifikatTableBody">'+
+        filtered.map((s, i) => '<tr><td>'+(s.foto?'<img src="'+s.foto+'" class="table-thumb" alt="Foto '+s.nomor+'">':'<span style="color:var(--gray-400);font-size:0.75rem;">-</span>')+'</td><td><strong>'+s.nomor+'</strong>'+(s.pdf?' <a href="'+s.pdf+'" target="_blank" rel="noopener" title="Buka file PDF"><i class="fas fa-file-pdf" style="color:#dc2626;"></i></a>':'')+'</td><td>'+s.nama+'</td><td>'+s.nim+'</td><td>'+s.angkatan+'</td><td>'+(s.kelas||'-')+'</td><td>'+s.jenis+'</td><td>'+s.nilai+'</td><td><span class="status-badge '+(s.status==='Sudah Bisa Diambil'?'success':'warning')+'">'+s.status+'</span></td><td><span class="status-badge '+(s.diambil==='Sudah Diambil'?'success':'warning')+'">'+(s.diambil||'Belum Diambil')+'</span></td><td><button class="btn btn-sm btn-warning" onclick="showModalSertifikasi('+data.sertifikatSAP.indexOf(s)+')"><i class="fas fa-pen"></i></button> <button class="btn btn-sm btn-danger" onclick="deleteSertifikasi('+data.sertifikatSAP.indexOf(s)+')"><i class="fas fa-trash"></i></button></td></tr>').join('')+
+
+        '</tbody></table></div>'+
+        (filtered.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;"></i>Tidak ada data sertifikat yang cocok dengan filter.</div>' : '');
+}
+
+function filterSertifikatTable() {
+    const search = document.getElementById('sertifikatSearch')?.value || '';
+    const status = document.getElementById('filterSertifikatStatus')?.value || '';
+    const diambil = document.getElementById('filterSertifikatDiambil')?.value || '';
+    const angkatan = document.getElementById('filterSertifikatAngkatan')?.value || '';
+    
+    sessionStorage.setItem('erpify_sertifikat_search', search);
+    sessionStorage.setItem('erpify_sertifikat_status', status);
+    sessionStorage.setItem('erpify_sertifikat_diambil', diambil);
+    sessionStorage.setItem('erpify_sertifikat_angkatan', angkatan);
+    
+    renderAdminSertifikasi();
+}
+
+function resetFilterSertifikat() {
+    sessionStorage.removeItem('erpify_sertifikat_search');
+    sessionStorage.removeItem('erpify_sertifikat_status');
+    sessionStorage.removeItem('erpify_sertifikat_diambil');
+    sessionStorage.removeItem('erpify_sertifikat_angkatan');
+    renderAdminSertifikasi();
+}
+
+
+function generateKodeSertifikat() {
+    const data = getData();
+    const existing = data.sertifikatSAP.map(s => parseInt(s.nomor.split('-')[2]) || 0);
+    const maxNum = existing.length > 0 ? Math.max(...existing) : 0;
+    const nextNum = String(maxNum + 1).padStart(4, '0');
+    return 'SAP-2026-'+nextNum;
+}
+
+function showModalSertifikasi(index) {
+    const data = getData();
+    const s = (index !== undefined && index !== null && index >= 0) ? data.sertifikatSAP[index] : null;
+    document.getElementById('modalSertifikasiTitle').textContent = s ? 'Edit Data Sertifikasi' : 'Tambah Data Sertifikasi Baru';
+    document.getElementById('srIndex').value = (s ? index : '');
+    document.getElementById('srNomor').value = s ? s.nomor : generateKodeSertifikat();
+    document.getElementById('srNomor').readOnly = true;
+    document.getElementById('srNama').value = s ? s.nama : '';
+    document.getElementById('srNim').value = s ? s.nim : '';
+    document.getElementById('srAngkatan').value = s ? s.angkatan : '';
+    document.getElementById('srKelas').value = s ? (s.kelas || '') : '';
+    document.getElementById('srJenis').value = s ? s.jenis : '';
+    document.getElementById('srNilai').value = s ? s.nilai : '';
+    document.getElementById('srStatus').value = s ? s.status : 'Belum Bisa Diambil';
+    document.getElementById('srDiambil').value = s ? (s.diambil || 'Belum Diambil') : 'Belum Diambil';
+    // Link / file PDF sertifikat
+    const pdfField = document.getElementById('srPdf');
+    if (pdfField) pdfField.value = s ? (s.pdf || '') : '';
+    const pdfFileField = document.getElementById('srPdfFile');
+    if (pdfFileField) pdfFileField.value = '';
+    const pdfStatusField = document.getElementById('srPdfStatus');
+    if (pdfStatusField) pdfStatusField.innerHTML = '';
+    // Reset / isi preview foto sertifikat
+    const fotoPreview = document.getElementById('srFotoPreview');
+    const fotoWrapper = document.getElementById('srFotoWrapper');
+    if (fotoPreview) {
+        const icon = fotoWrapper ? fotoWrapper.querySelector('i') : null;
+        const hint = fotoWrapper ? fotoWrapper.querySelector('p') : null;
+        if (s && s.foto) {
+            fotoPreview.src = s.foto;
+            fotoPreview.style.display = 'block';
+            if (fotoWrapper) fotoWrapper.classList.add('has-image');
+            if (icon) icon.style.display = 'none';
+            if (hint) hint.style.display = 'none';
+        } else {
+            fotoPreview.src = '';
+            fotoPreview.style.display = 'none';
+            if (fotoWrapper) fotoWrapper.classList.remove('has-image');
+            if (icon) icon.style.display = '';
+            if (hint) hint.style.display = '';
+        }
+    }
+    openModal('modalSertifikasi');
+}
+
+function saveSertifikasi() {
+    const data = getData();
+    const index = document.getElementById('srIndex').value;
+    const nomor = document.getElementById('srNomor').value.trim();
+    const nama = document.getElementById('srNama').value.trim();
+    const nim = document.getElementById('srNim').value.trim();
+    const angkatan = document.getElementById('srAngkatan').value.trim();
+    const kelas = document.getElementById('srKelas').value.trim();
+    const jenis = document.getElementById('srJenis').value.trim();
+    const nilai = document.getElementById('srNilai').value.trim();
+    const status = document.getElementById('srStatus').value;
+    const diambil = document.getElementById('srDiambil').value;
+    if (!nama || !nim || !nomor) { alert('Nama, NIM, dan Kode Sertifikat harus diisi!'); return; }
+    const pdfField = document.getElementById('srPdf');
+    const pdf = pdfField ? pdfField.value.trim() : '';
+    const fotoPreview = document.getElementById('srFotoPreview');
+    const fotoBaru = getUploadPreviewValue('srFotoPreview');
+    if (index !== '') {
+        const s = data.sertifikatSAP[parseInt(index)];
+        if (s) { s.nomor = nomor; s.nama = nama; s.nim = nim; s.angkatan = angkatan; s.kelas = kelas; s.jenis = jenis; s.nilai = nilai; s.status = status; s.diambil = diambil; s.pdf = pdf; if (fotoBaru) s.foto = fotoBaru; }
+    } else {
+        data.sertifikatSAP.push({ nomor, nama, nim, angkatan, kelas, jenis, nilai, status, diambil, foto: fotoBaru, pdf: pdf });
+    }
+    saveData(data);
+    closeModal('modalSertifikasi');
+    renderAdminContent();
+}
+
+
+
+function deleteSertifikasi(index) {
+    if (!confirm('Hapus data sertifikasi ini?')) return;
+    const data = getData();
+    data.sertifikatSAP.splice(index, 1);
+    saveData(data);
+    renderAdminContent();
+}
+
+function downloadTemplateSertifikat() {
+    // Template TANPA kode sertifikat (akan digenerate otomatis)
+    const headers = ['Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
+    const contoh = [
+        ['Contoh Mahasiswa 1','2203001','2023','A','SAP S/4HANA Associate','A','Sudah Bisa Diambil','Belum Diambil'],
+        ['Contoh Mahasiswa 2','2203002','2023','B','SAP FI Associate','A-','Belum Bisa Diambil','Belum Diambil']
+    ];
+
+    // Buat HTML table untuk Excel (.xls)
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Template Sertifikat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
+    html += '<tr>' + headers.map(h => '<th style="background:#0a1628;color:white;padding:8px;font-weight:bold;border:1px solid #333;">'+h+'</th>').join('') + '</tr>';
+    contoh.forEach(r => {
+        html += '<tr>' + r.map(v => '<td style="padding:6px;border:1px solid #ddd;">'+v+'</td>').join('') + '</tr>';
+    });
+    html += '</table></body></html>';
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'template_import_sertifikat_ERPify.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+function exportSertifikatCSV() {
+    const data = getData();
+    const headers = ['Kode Sertifikasi','Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
+    const rows = data.sertifikatSAP.map(s => [s.nomor, s.nama, s.nim, s.angkatan, s.kelas||'', s.jenis, s.nilai, s.status, s.diambil||'Belum Diambil']);
+
+    let csv = headers.join(',') + '\n';
+    rows.forEach(r => { csv += r.map(v => '"'+v+'"').join(',') + '\n'; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'data_sertifikat_ERPify.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportSertifikatExcel() {
+    const data = getData();
+    const headers = ['Kode Sertifikasi','Nama Mahasiswa','NIM','Angkatan','Kelas','Jenis Sertifikasi','Nilai','Status','Status Pengambilan'];
+    const rows = data.sertifikatSAP.map(s => [s.nomor, s.nama, s.nim, s.angkatan, s.kelas||'', s.jenis, s.nilai, s.status, s.diambil||'Belum Diambil']);
+
+    
+    // Buat HTML table untuk Excel
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Data Sertifikat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
+    html += '<tr>' + headers.map(h => '<th style="background:#0a1628;color:white;padding:8px;font-weight:bold;">'+h+'</th>').join('') + '</tr>';
+    rows.forEach(r => {
+        html += '<tr>' + r.map(v => '<td style="padding:6px;border:1px solid #ddd;">'+v+'</td>').join('') + '</tr>';
+    });
+    html += '</table></body></html>';
+    
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'data_sertifikat_ERPify.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showImportModal() {
+    // Buat modal import
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.id = 'modalImportSertifikat';
+    overlay.onclick = function(e) { if (e.target === this) closeImportModal(); };
+    overlay.innerHTML = '<div class="modal-content" style="max-width:500px;"><div class="modal-header"><h3><i class="fas fa-file-import"></i> Import Data Sertifikat</h3><button class="modal-close" onclick="closeImportModal()"><i class="fas fa-times"></i></button></div><div class="modal-body" style="text-align:center;">'+
+        '<div style="margin:24px 0;padding:40px 20px;border:2px dashed var(--gray-300);border-radius:12px;background:var(--gray-50);cursor:pointer;" id="importDropZone" onclick="document.getElementById(\'importFileInput\').click()">'+
+        '<i class="fas fa-cloud-upload-alt" style="font-size:3rem;color:var(--blue);margin-bottom:16px;display:block;"></i>'+
+        '<p style="font-weight:600;color:var(--navy);margin-bottom:8px;">Klik untuk upload file</p>'+
+        '<p style="font-size:0.8125rem;color:var(--gray-500);">Format: Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan<br><small style="color:var(--gray-400);">(Kode sertifikat akan digenerate otomatis oleh sistem)</small></p>'+
+        '<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-file-excel"></i> Mendukung file <strong>.xls</strong>, <strong>.xlsx</strong>, dan <strong>.csv</strong></p>'+
+        '<input type="file" id="importFileInput" accept=".csv,.xls,.xlsx" style="display:none;" onchange="processImportFile(this)">'+
+        '</div>'+
+        '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">'+
+        '<button class="btn btn-primary btn-sm" onclick="downloadTemplateSertifikat()"><i class="fas fa-download"></i> Download Template</button>'+
+        '<button class="btn btn-secondary btn-sm" onclick="closeImportModal()">Batal</button>'+
+        '</div></div></div>';
+    document.body.appendChild(overlay);
+}
+
+function closeImportModal() {
+    const el = document.getElementById('modalImportSertifikat');
+    if (el) el.remove();
+}
+
+function processImportFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith('.xls') || fileName.endsWith('.xlsx');
+    
+    if (isExcel) {
+        // Baca file Excel menggunakan SheetJS (XLSX library)
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = new Uint8Array(ev.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                
+                if (jsonData.length < 2) {
+                    alert('File Excel tidak valid atau kosong.');
+                    return;
+                }
+                
+                // Baris pertama adalah header, skip
+                const rows = jsonData.slice(1).filter(r => r.some(cell => cell !== undefined && cell !== null && String(cell).trim() !== ''));
+                
+                const appData = getData();
+                let count = 0;
+                let errors = [];
+                
+                rows.forEach((row, idx) => {
+                    // Konversi semua cell ke string
+                    const cols = row.map(cell => String(cell || '').trim());
+                    
+                    if (cols.length >= 9) {
+                        // Format 9 kolom: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
+                        appData.sertifikatSAP.push({ 
+                            nomor: cols[0], 
+                            nama: cols[1], 
+                            nim: cols[2], 
+                            angkatan: cols[3], 
+                            kelas: cols[4] || '', 
+                            jenis: cols[5], 
+                            nilai: cols[6], 
+                            status: cols[7],
+                            diambil: cols[8] || 'Belum Diambil',
+                            foto: ''
+                        });
+                        count++;
+                    } else if (cols.length >= 8) {
+                        // Format 8 kolom (TANPA Kode Sertifikasi)
+                        const newNomor = generateKodeSertifikatFromData(appData);
+                        appData.sertifikatSAP.push({ 
+                            nomor: newNomor, 
+                            nama: cols[0], 
+                            nim: cols[1], 
+                            angkatan: cols[2], 
+                            kelas: cols[3] || '', 
+                            jenis: cols[4], 
+                            nilai: cols[5], 
+                            status: cols[6],
+                            diambil: cols[7] || 'Belum Diambil',
+                            foto: ''
+                        });
+                        count++;
+                    } else if (cols.length >= 6) {
+                        // Format 6 kolom
+                        const newNomor = generateKodeSertifikatFromData(appData);
+                        appData.sertifikatSAP.push({ 
+                            nomor: newNomor, 
+                            nama: cols[0], 
+                            nim: cols[1], 
+                            angkatan: cols[2], 
+                            kelas: '', 
+                            jenis: cols[3], 
+                            nilai: cols[4], 
+                            status: cols[5],
+                            diambil: 'Belum Diambil',
+                            foto: ''
+                        });
+                        count++;
+                    } else {
+                        errors.push('Baris ' + (idx + 2) + ': hanya ' + cols.length + ' kolom (minimal 6 kolom diperlukan)');
+                    }
+                });
+                
+                saveData(appData);
+                closeImportModal();
+                renderAdminContent();
+                let msg = 'Import berhasil! ' + count + ' data sertifikat ditambahkan.';
+                if (errors.length > 0) {
+                    msg += '\n\nPeringatan (' + errors.length + ' baris dilewati):\n' + errors.join('\n');
+                }
+                alert(msg);
+            } catch(e) {
+                alert('Gagal membaca file Excel: ' + e.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        // Baca file CSV
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const text = ev.target.result;
+            const lines = text.split('\n').filter(l => l.trim());
+            if (lines.length < 2) { alert('File CSV tidak valid atau kosong.'); return; }
+            const data = getData();
+            let count = 0;
+            let errors = [];
+            for (let i = 1; i < lines.length; i++) {
+                // Parse CSV dengan benar (handle koma di dalam tanda kutip)
+                const cols = parseCSVLine(lines[i]);
+                
+                // Cek jumlah kolom untuk menentukan format
+                if (cols.length >= 9) {
+                    // Format 9 kolom: Kode Sertifikasi, Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
+                    data.sertifikatSAP.push({ 
+                        nomor: cols[0], 
+                        nama: cols[1], 
+                        nim: cols[2], 
+                        angkatan: cols[3], 
+                        kelas: cols[4] || '', 
+                        jenis: cols[5], 
+                        nilai: cols[6], 
+                        status: cols[7],
+                        diambil: cols[8] || 'Belum Diambil',
+                        foto: ''
+                    });
+                    count++;
+                } else if (cols.length >= 8) {
+                    // Format 8 kolom (TANPA Kode Sertifikasi - akan digenerate otomatis):
+                    // Nama, NIM, Angkatan, Kelas, Jenis, Nilai, Status, Status Pengambilan
+                    const newNomor = generateKodeSertifikatFromData(data);
+                    data.sertifikatSAP.push({ 
+                        nomor: newNomor, 
+                        nama: cols[0], 
+                        nim: cols[1], 
+                        angkatan: cols[2], 
+                        kelas: cols[3] || '', 
+                        jenis: cols[4], 
+                        nilai: cols[5], 
+                        status: cols[6],
+                        diambil: cols[7] || 'Belum Diambil',
+                        foto: ''
+                    });
+                    count++;
+                } else if (cols.length >= 6) {
+                    // Format 6 kolom (tanpa Kode, Kelas, Status Pengambilan):
+                    // Nama, NIM, Angkatan, Jenis, Nilai, Status
+                    const newNomor = generateKodeSertifikatFromData(data);
+                    data.sertifikatSAP.push({ 
+                        nomor: newNomor, 
+                        nama: cols[0], 
+                        nim: cols[1], 
+                        angkatan: cols[2], 
+                        kelas: '', 
+                        jenis: cols[3], 
+                        nilai: cols[4], 
+                        status: cols[5],
+                        diambil: 'Belum Diambil',
+                        foto: ''
+                    });
+                    count++;
+                } else {
+                    errors.push('Baris ' + (i + 1) + ': hanya ' + cols.length + ' kolom (minimal 6 kolom diperlukan)');
+                }
+            }
+            saveData(data);
+            closeImportModal();
+            renderAdminContent();
+            let msg = 'Import berhasil! ' + count + ' data sertifikat ditambahkan.';
+            if (errors.length > 0) {
+                msg += '\n\nPeringatan (' + errors.length + ' baris dilewati):\n' + errors.join('\n');
+            }
+            alert(msg);
+        };
+        reader.readAsText(file);
+    }
+}
+
+// Generate kode sertifikat baru berdasarkan data yang sudah ada (termasuk yang baru ditambahkan)
+function generateKodeSertifikatFromData(data) {
+    const existing = data.sertifikatSAP.map(s => {
+        const parts = s.nomor.split('-');
+        return parseInt(parts[parts.length - 1]) || 0;
+    });
+    const maxNum = existing.length > 0 ? Math.max(...existing) : 0;
+    const nextNum = String(maxNum + 1).padStart(4, '0');
+    return 'SAP-2026-' + nextNum;
+}
+
+// Fungsi untuk parse CSV line dengan benar (handle koma di dalam tanda kutip)
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+
+
+// ===== ADMIN PENGATURAN HALAMAN (DRAG & DROP) =====
+function renderAdminSettings() {
+    const data = getData();
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    const pageLabels = {
+        beranda:'Beranda', dosen:'Dosen & Anggota', matakuliah:'Mata Kuliah',
+        kerjasama:'Kerjasama', berita:'Berita', sertifikat:'Sertifikat'
+    };
+    const pageIcons = {
+        beranda:'fas fa-home', dosen:'fas fa-chalkboard-teacher', matakuliah:'fas fa-book',
+        kerjasama:'fas fa-handshake', berita:'fas fa-newspaper', sertifikat:'fas fa-certificate'
+    };
+    const order = data.pageOrder || Object.keys(pageLabels);
+    container.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><h3 style="color:var(--navy);"><i class="fas fa-paint-brush"></i> Pengaturan Subjudul Halaman</h3><p style="color:var(--gray-500);font-size:0.875rem;">Drag & drop untuk urutan ulang halaman. Edit subjudul hero section setiap halaman website. Perubahan akan langsung tampil di frontend.</p></div>'+
+        '<div class="drag-sort-list" id="dragSortList">'+
+        order.map(key => '<div class="drag-sort-item" data-key="'+key+'" draggable="true"><div class="drag-handle"><i class="fas fa-grip-lines"></i></div><i class="'+pageIcons[key]+'" style="font-size:1.25rem;color:var(--blue);width:36px;text-align:center;"></i><div class="info"><strong>'+pageLabels[key]+'</strong><small id="settingPreview_'+key+'">'+(data.pageSettings[key]?.subtitle || '')+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalSetting(\''+key+'\')"><i class="fas fa-pen"></i></button></div></div>').join('')+
+        '</div>';
+    initDragSort();
+}
+
+function initDragSort() {
+    const list = document.getElementById('dragSortList');
+    if (!list) return;
+    let dragItem = null;
+    list.querySelectorAll('.drag-sort-item').forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            dragItem = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            dragItem = null;
+            list.querySelectorAll('.drag-sort-item').forEach(i => i.classList.remove('drag-over'));
+        });
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (this !== dragItem) {
+                list.querySelectorAll('.drag-sort-item').forEach(i => i.classList.remove('drag-over'));
+                this.classList.add('drag-over');
+            }
+        });
+        item.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (dragItem && this !== dragItem) {
+                const items = [...list.querySelectorAll('.drag-sort-item')];
+                const fromIdx = items.indexOf(dragItem);
+                const toIdx = items.indexOf(this);
+                if (fromIdx < toIdx) {
+                    this.parentNode.insertBefore(dragItem, this.nextSibling);
+                } else {
+                    this.parentNode.insertBefore(dragItem, this);
+                }
+                saveDragOrder();
+            }
+        });
+    });
+}
+
+function saveDragOrder() {
+    const list = document.getElementById('dragSortList');
+    if (!list) return;
+    const data = getData();
+    data.pageOrder = [...list.querySelectorAll('.drag-sort-item')].map(item => item.dataset.key);
+    saveData(data);
+}
+
+
+function showModalSetting(key) {
+    const data = getData();
+    document.getElementById('modalSettingTitle').textContent = 'Edit Subjudul Halaman';
+    document.getElementById('stKey').value = key;
+    document.getElementById('stSubtitle').value = data.pageSettings[key]?.subtitle || '';
+    // Load dropdown items
+    const container = document.getElementById('dropdownItemsContainer');
+    if (container) {
+        const items = data.pageSettings[key]?.dropdownItems || [];
+        if (items.length === 0) {
+            container.innerHTML = '<p style="font-size:0.8125rem;color:var(--gray-400);">Belum ada item dropdown. Klik "Tambah Item" untuk menambahkan.</p>';
+        } else {
+            container.innerHTML = items.map((item, idx) => 
+                '<div class="dropdown-item-field" data-idx="'+idx+'">'+
+                '<input type="text" class="dd-label" placeholder="Judul item (klik untuk expand)" value="'+item.label+'">'+
+                '<textarea class="dd-content" rows="2" placeholder="Konten yang muncul saat diklik...">'+item.content+'</textarea>'+
+                '<button class="btn btn-sm btn-danger" onclick="removeDropdownItemField(this)" style="flex-shrink:0;"><i class="fas fa-times"></i></button>'+
+                '</div>'
+            ).join('');
+        }
+    }
+    openModal('modalSetting');
+}
+
+function addDropdownItemField() {
+    const container = document.getElementById('dropdownItemsContainer');
+    if (!container) return;
+    // Hapus placeholder jika ada
+    const placeholder = container.querySelector('p');
+    if (placeholder && container.children.length === 1) {
+        container.innerHTML = '';
+    }
+    const idx = container.children.length;
+    const div = document.createElement('div');
+    div.className = 'dropdown-item-field';
+    div.dataset.idx = idx;
+    div.innerHTML = '<input type="text" class="dd-label" placeholder="Judul item (klik untuk expand)" value="">'+
+        '<textarea class="dd-content" rows="2" placeholder="Konten yang muncul saat diklik..."></textarea>'+
+        '<button class="btn btn-sm btn-danger" onclick="removeDropdownItemField(this)" style="flex-shrink:0;"><i class="fas fa-times"></i></button>';
+    container.appendChild(div);
+}
+
+function removeDropdownItemField(btn) {
+    const div = btn.parentElement;
+    div.remove();
+    const container = document.getElementById('dropdownItemsContainer');
+    if (container && container.children.length === 0) {
+        container.innerHTML = '<p style="font-size:0.8125rem;color:var(--gray-400);">Belum ada item dropdown. Klik "Tambah Item" untuk menambahkan.</p>';
+    }
+}
+
+function saveSetting() {
+    const data = getData();
+    const key = document.getElementById('stKey').value;
+    const subtitle = document.getElementById('stSubtitle').value.trim();
+    if (!key || !subtitle) { alert('Subjudul harus diisi!'); return; }
+    if (!data.pageSettings[key]) data.pageSettings[key] = {};
+    data.pageSettings[key].subtitle = subtitle;
+    
+    // Simpan dropdown items
+    const container = document.getElementById('dropdownItemsContainer');
+    if (container) {
+        const fields = container.querySelectorAll('.dropdown-item-field');
+        const items = [];
+        fields.forEach(f => {
+            const label = f.querySelector('.dd-label')?.value?.trim();
+            const content = f.querySelector('.dd-content')?.value?.trim();
+            if (label && content) {
+                items.push({ label, content, _open: false });
+            }
+        });
+        data.pageSettings[key].dropdownItems = items.length > 0 ? items : [];
+    }
+    
+    saveData(data);
+    closeModal('modalSetting');
+    renderAdminContent();
+}
+
+
+// ===== ADMIN BERANDA =====
+function renderAdminBeranda() {
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:40px 0;"><div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,var(--blue),var(--navy));display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:2rem;color:white;"><i class="fas fa-home"></i></div>'+
+        '<h2 style="font-size:1.75rem;font-weight:800;color:var(--navy);margin-bottom:8px;">Selamat Datang di Panel Admin ERPify</h2>'+
+        '<p style="color:var(--gray-500);font-size:1rem;margin-bottom:32px;max-width:500px;margin-left:auto;margin-right:auto;">Kelola semua konten website ERPify dari sini. Gunakan menu sidebar untuk mengelola data.</p>'+
+        '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">'+
+        '<a href="index.html" target="_blank" class="btn btn-primary"><i class="fas fa-external-link-alt"></i> Lihat Website</a>'+
+        '<a href="index.html" class="btn btn-primary-outline"><i class="fas fa-edit"></i> Edit Halaman Beranda</a>'+
+        '</div>'+
+        '<div style="margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;max-width:700px;margin-left:auto;margin-right:auto;">'+
+        '<a href="dosen-anggota.html" target="_blank" style="background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--gray-200);text-decoration:none;transition:var(--transition);"><i class="fas fa-chalkboard-teacher" style="font-size:1.5rem;color:var(--blue);margin-bottom:8px;display:block;"></i><span style="font-size:0.875rem;font-weight:600;color:var(--navy);">Dosen & Anggota</span></a>'+
+        '<a href="matakuliah.html" target="_blank" style="background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--gray-200);text-decoration:none;transition:var(--transition);"><i class="fas fa-book" style="font-size:1.5rem;color:var(--blue);margin-bottom:8px;display:block;"></i><span style="font-size:0.875rem;font-weight:600;color:var(--navy);">Mata Kuliah</span></a>'+
+        '<a href="sertifikat.html" target="_blank" style="background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--gray-200);text-decoration:none;transition:var(--transition);"><i class="fas fa-certificate" style="font-size:1.5rem;color:var(--blue);margin-bottom:8px;display:block;"></i><span style="font-size:0.875rem;font-weight:600;color:var(--navy);">Cek Sertifikat</span></a>'+
+        '<a href="kerjasama.html" target="_blank" style="background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--gray-200);text-decoration:none;transition:var(--transition);"><i class="fas fa-handshake" style="font-size:1.5rem;color:var(--blue);margin-bottom:8px;display:block;"></i><span style="font-size:0.875rem;font-weight:600;color:var(--navy);">Kerjasama</span></a>'+
+        '<a href="berita.html" target="_blank" style="background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--gray-200);text-decoration:none;transition:var(--transition);"><i class="fas fa-newspaper" style="font-size:1.5rem;color:var(--blue);margin-bottom:8px;display:block;"></i><span style="font-size:0.875rem;font-weight:600;color:var(--navy);">Berita</span></a>'+
+        '</div></div>';
+}
+
+// ===== ADMIN CONTENT RENDERER =====
+function renderAdminContent() {
+    const container = document.getElementById('adminContent');
+    if (!container) return;
+    const tab = document.querySelector('.admin-tabs .active');
+    const activeTab = tab ? tab.dataset.tab : 'dashboard';
+    switch(activeTab) {
+        case 'beranda': renderAdminBeranda(); break;
+        case 'dashboard': renderDashboard(); break;
+        case 'platform': renderAdminPlatform(); break;
+        case 'dosen': renderAdminDosen(); break;
+        case 'mitra': renderAdminMitra(); break;
+        case 'anggota': renderAdminAnggota(); break;
+        case 'berita': renderAdminBerita(); break;
+        case 'generasi': renderAdminGenerasi(); break;
+        case 'sertifikasi': renderAdminSertifikasi(); break;
+        case 'settings': renderAdminSettings(); break;
+        default: renderDashboard();
+    }
+}
+
+
+function switchAdminTab(tab) {
+    document.querySelectorAll('.admin-tabs button').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    renderAdminContent();
+}
+

@@ -1,0 +1,29 @@
+# ============================================================
+# ERPify - daftar file yang TIDAK ikut ke GitHub
+# ============================================================
+
+# 1. Kredensial database (harus dibuat di server, jangan pernah di-commit)
+api/config.php
+
+# 2. Database SQLite (hanya dipakai untuk uji lokal di komputer)
+data/
+
+# 3. File hasil upload admin/pengunjung (foto & PDF) - hanya ada di server
+uploads/**/*.jpg
+uploads/**/*.jpeg
+uploads/**/*.png
+uploads/**/*.webp
+uploads/**/*.gif
+uploads/**/*.pdf
+sertifikat/*.pdf
+
+# 4. File sistem & arsip
+.DS_Store
+Thumbs.db
+*.zip
+*.tar.gz
+*.log
+
+# 5. File lama yang tidak dipakai di hosting (biar tidak terbawa deploy)
+WebsiteERPify.html
+admin copy.html

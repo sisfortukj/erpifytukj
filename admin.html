@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - ERPify</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root { --admin-bg: #f0f2f5; --admin-sidebar: #0a1628; --admin-card: #fff; }
+body { background: var(--admin-bg); }
+.admin-layout { display:flex; min-height:100vh; }
+.admin-sidebar { width:250px; background:var(--admin-sidebar); color:white; padding:24px 0; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; z-index:100; }
+.admin-sidebar .logo { padding:0 20px 24px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+.admin-sidebar .logo img { width:40px; height:40px; border-radius:8px; }
+.admin-sidebar .logo span { font-weight:700; font-size:1.125rem; }
+.admin-sidebar .logo small { display:block; font-size:0.7rem; opacity:0.6; font-weight:400; }
+.admin-tabs { display:flex; flex-direction:column; gap:2px; padding:0 8px; }
+.admin-tabs button { background:transparent; border:none; color:rgba(255,255,255,0.6); padding:12px 16px; text-align:left; border-radius:8px; cursor:pointer; font-size:0.875rem; font-family:'Inter',sans-serif; transition:all 0.2s; display:flex; align-items:center; gap:10px; }
+.admin-tabs button i { width:20px; text-align:center; font-size:1rem; }
+.admin-tabs button:hover { background:rgba(255,255,255,0.08); color:white; }
+.admin-tabs button.active { background:var(--blue); color:white; }
+.admin-main { margin-left:250px; flex:1; padding:32px; min-height:100vh; }
+.admin-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:32px; }
+.admin-header h2 { font-size:1.5rem; color:var(--navy); font-weight:700; }
+.admin-header .admin-user { display:flex; align-items:center; gap:10px; color:var(--gray-500); font-size:0.875rem; }
+.admin-header .admin-user i { font-size:1.25rem; color:var(--blue); }
+#adminContent { animation:fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.dashboard-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:32px; }
+.dashboard-card { background:var(--admin-card); border-radius:12px; padding:20px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.dashboard-card .d-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:1.25rem; color:white; }
+.d-icon.blue { background:linear-gradient(135deg,#207ae0,#1a5fa8); }
+.d-icon.green { background:linear-gradient(135deg,#16a34a,#15803d); }
+.d-icon.orange { background:linear-gradient(135deg,#f59e0b,#d97706); }
+.d-icon.purple { background:linear-gradient(135deg,#8b5cf6,#7c3aed); }
+.d-icon.teal { background:linear-gradient(135deg,#14b8a6,#0d9488); }
+.dashboard-card .d-number { font-size:2rem; font-weight:800; color:var(--navy); }
+.dashboard-card .d-label { font-size:0.8125rem; color:var(--gray-500); margin-top:4px; }
+.chart-container { background:var(--admin-card); border-radius:12px; padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.06); margin-bottom:24px; }
+.chart-container h4 { font-size:1rem; color:var(--navy); margin-bottom:20px; }
+.chart-bars { display:flex; align-items:flex-end; justify-content:space-around; height:180px; padding-top:20px; }
+.chart-bar { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
+.chart-bar .bar { width:32px; border-radius:6px 6px 0 0; min-height:8px; transition:height 0.5s ease; }
+.chart-bar .bar-value { font-size:0.75rem; font-weight:600; color:var(--navy); }
+.chart-bar .bar-label { font-size:0.75rem; color:var(--gray-500); margin-top:4px; }
+.admin-list { display:flex; flex-direction:column; gap:8px; }
+.admin-item { background:var(--admin-card); border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.admin-item .info { flex:1; }
+.admin-item .info strong { font-size:0.9375rem; color:var(--navy); }
+.admin-item .info small { font-size:0.8125rem; color:var(--gray-500); }
+.admin-item .actions { display:flex; gap:6px; }
+.admin-table-wrap { overflow-x:auto; background:var(--admin-card); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+.admin-table { width:100%; border-collapse:collapse; font-size:0.875rem; }
+.admin-table th { background:var(--navy); color:white; padding:12px 16px; text-align:left; font-weight:600; white-space:nowrap; }
+.admin-table td { padding:12px 16px; border-bottom:1px solid #eef0f2; color:var(--gray-600); }
+.admin-table tr:hover td { background:#f8f9fa; }
+.table-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.status-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
+.status-badge.success { background:#dcfce7; color:#16a34a; }
+.status-badge.warning { background:#fef3c7; color:#d97706; }
+
+/* ===== DRAG & DROP SETTINGS ===== */
+.drag-sort-list { display:flex; flex-direction:column; gap:8px; }
+.drag-sort-item { background:var(--admin-card); border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.06); cursor:grab; transition:all 0.3s ease; border:2px solid transparent; }
+.drag-sort-item:active { cursor:grabbing; }
+.drag-sort-item.dragging { opacity:0.5; border-color:var(--blue); }
+.drag-sort-item.drag-over { border-color:var(--blue); background:rgba(32,122,224,0.05); transform:scale(1.02); }
+.drag-sort-item .drag-handle { color:var(--gray-400); font-size:1.25rem; cursor:grab; }
+.drag-sort-item .drag-handle:active { cursor:grabbing; }
+.drag-sort-item .info { flex:1; }
+.drag-sort-item .info strong { font-size:0.9375rem; color:var(--navy); }
+.drag-sort-item .info small { font-size:0.8125rem; color:var(--gray-500); display:block; }
+.drag-sort-item .actions { display:flex; gap:6px; }
+
+@media(max-width:768px) {
+    .admin-sidebar { width:60px; }
+    .admin-sidebar .logo span, .admin-sidebar .logo small, .admin-tabs button span { display:none; }
+    .admin-sidebar .logo { padding:12px; justify-content:center; }
+    .admin-tabs button { justify-content:center; padding:12px; }
+    .admin-main { margin-left:60px; padding:16px; }
+    .dashboard-grid { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="admin-layout">
+<div class="admin-sidebar">
+<div class="logo">
+<img src="Logo ERP.png" alt="ERPify">
+<div><span>ERPify</span><small>Admin Panel</small></div>
+</div>
+<div class="admin-tabs">
+<button data-tab="beranda" onclick="switchAdminTab('beranda')"><i class="fas fa-home"></i> <span>Beranda</span></button>
+<button data-tab="dashboard" class="active" onclick="switchAdminTab('dashboard')"><i class="fas fa-chart-pie"></i> <span>Dashboard</span></button>
+<button data-tab="platform" onclick="switchAdminTab('platform')"><i class="fas fa-cubes"></i> <span>Platform</span></button>
+<button data-tab="dosen" onclick="switchAdminTab('dosen')"><i class="fas fa-chalkboard-teacher"></i> <span>Dosen</span></button>
+<button data-tab="anggota" onclick="switchAdminTab('anggota')"><i class="fas fa-users"></i> <span>Anggota</span></button>
+<button data-tab="generasi" onclick="switchAdminTab('generasi')"><i class="fas fa-layer-group"></i> <span>Generasi</span></button>
+<button data-tab="mitra" onclick="switchAdminTab('mitra')"><i class="fas fa-handshake"></i> <span>Mitra</span></button>
+<button data-tab="berita" onclick="switchAdminTab('berita')"><i class="fas fa-newspaper"></i> <span>Berita</span></button>
+<button data-tab="sertifikasi" onclick="switchAdminTab('sertifikasi')"><i class="fas fa-certificate"></i> <span>Sertifikasi</span></button>
+<button data-tab="settings" onclick="switchAdminTab('settings')"><i class="fas fa-paint-brush"></i> <span>Pengaturan</span></button>
+</div>
+
+</div>
+<div class="admin-main">
+<div class="admin-header">
+<h2><i class="fas fa-cog"></i> Panel Admin ERPify</h2>
+<div class="admin-user">
+<i class="fas fa-user-shield"></i> Administrator
+<button class="btn btn-sm btn-danger" onclick="logoutAdmin()" style="margin-left:12px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+</div>
+</div>
+<div id="adminContent"></div>
+</div>
+</div>
+
+<!-- ===== MODAL PLATFORM ===== -->
+<div class="modal-overlay" id="modalPlatform" onclick="if(event.target===this)closeModal('modalPlatform')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalPlatformTitle">Tambah Platform</h3><button class="modal-close" onclick="closeModal('modalPlatform')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="pfId">
+<div class="form-group"><label>Nama Platform</label><input type="text" id="pfName" placeholder="Contoh: Odoo"></div>
+<div class="form-group"><label>Deskripsi</label><textarea id="pfDesc" rows="3" placeholder="Deskripsi platform..."></textarea></div>
+<div class="form-group"><label>Icon (Font Awesome)</label><input type="text" id="pfIcon" placeholder="fas fa-cube"></div>
+<button class="btn btn-primary" onclick="savePlatform()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalPlatform')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL DOSEN ===== -->
+<div class="modal-overlay" id="modalDosen" onclick="if(event.target===this)closeModal('modalDosen')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalDosenTitle">Tambah Dosen</h3><button class="modal-close" onclick="closeModal('modalDosen')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="dsId">
+<div class="form-group"><label>Nama Lengkap</label><input type="text" id="dsNama" placeholder="Nama dosen"></div>
+<div class="form-group"><label>Jabatan</label><input type="text" id="dsJabatan" placeholder="Contoh: Kepala Lab"></div>
+<div class="form-group"><label>Keahlian</label><textarea id="dsKeahlian" rows="2" placeholder="Deskripsi keahlian..."></textarea></div>
+<div class="form-group"><label>Tags (pisahkan dengan koma)</label><input type="text" id="dsTags" placeholder="SAP, Odoo, ABAP"></div>
+<div class="form-group">
+<label>Foto Profil</label>
+<div class="upload-wrapper" id="dsFotoWrapper">
+<i class="fas fa-camera"></i>
+<p>Klik untuk upload foto</p>
+<img id="dsFotoPreview" class="upload-preview" style="display:none;">
+<input type="file" id="dsFotoInput" accept="image/*" style="display:none;">
+</div>
+</div>
+<button class="btn btn-primary" onclick="saveDosen()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalDosen')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL MITRA ===== -->
+<div class="modal-overlay" id="modalMitra" onclick="if(event.target===this)closeModal('modalMitra')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalMitraTitle">Tambah Mitra</h3><button class="modal-close" onclick="closeModal('modalMitra')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="mtIndex">
+<div class="form-group"><label>Nama Perusahaan / Institusi</label><input type="text" id="mtName" placeholder="Nama mitra"></div>
+<button class="btn btn-primary" onclick="saveMitra()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalMitra')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL ANGGOTA ===== -->
+<div class="modal-overlay" id="modalAnggota" onclick="if(event.target===this)closeModal('modalAnggota')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalAnggotaTitle">Tambah Anggota</h3><button class="modal-close" onclick="closeModal('modalAnggota')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="agGenKey">
+<input type="hidden" id="agIndex">
+<div class="form-group"><label>Nama Lengkap</label><input type="text" id="agNama" placeholder="Nama anggota"></div>
+<div class="form-group"><label>NIM</label><input type="text" id="agNim" placeholder="Nomor induk mahasiswa"></div>
+<div class="form-group"><label>Jabatan</label><input type="text" id="agJabatan" placeholder="Ketua Lab / Anggota"></div>
+<div class="form-group"><label>Divisi</label><input type="text" id="agDivisi" placeholder="SAP / Odoo / ABAP"></div>
+<div class="form-group">
+<label>Foto Profil</label>
+<div class="upload-wrapper" id="agFotoWrapper">
+<i class="fas fa-camera"></i>
+<p>Klik untuk upload foto</p>
+<img id="agFotoPreview" class="upload-preview" style="display:none;">
+<input type="file" id="agFotoInput" accept="image/*" style="display:none;">
+</div>
+</div>
+<button class="btn btn-primary" onclick="saveAnggota()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalAnggota')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL BERITA ===== -->
+<div class="modal-overlay" id="modalBerita" onclick="if(event.target===this)closeModal('modalBerita')">
+<div class="modal-content" style="max-width:550px;">
+<div class="modal-header"><h3 id="modalBeritaTitle">Tambah Berita</h3><button class="modal-close" onclick="closeModal('modalBerita')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="brId">
+<div class="form-group"><label>Judul Berita</label><input type="text" id="brTitle" placeholder="Judul berita"></div>
+<div class="form-group"><label>Deskripsi Singkat</label><textarea id="brDesc" rows="2" placeholder="Deskripsi singkat..."></textarea></div>
+<div class="form-group"><label>Deskripsi Lengkap</label><textarea id="brFullDesc" rows="4" placeholder="Deskripsi lengkap berita..."></textarea></div>
+<div class="form-group"><label>Tanggal & Waktu <span style="color:red;">*</span></label><input type="datetime-local" id="brDate" required></div>
+
+<div class="form-group"><label>Icon</label>
+<select id="brIcon" class="icon-select" onchange="updateIconPreview(this, 'brIconPreview')">
+<option value="fas fa-calendar-alt" data-icon="fas fa-calendar-alt">📅 Kalender</option>
+<option value="fas fa-trophy" data-icon="fas fa-trophy">🏆 Trofi</option>
+<option value="fas fa-users" data-icon="fas fa-users">👥 Users</option>
+<option value="fas fa-chalkboard-teacher" data-icon="fas fa-chalkboard-teacher">👨‍🏫 Dosen</option>
+<option value="fas fa-code" data-icon="fas fa-code">💻 Code</option>
+<option value="fas fa-handshake" data-icon="fas fa-handshake">🤝 Handshake</option>
+<option value="fas fa-laptop-code" data-icon="fas fa-laptop-code">💻 Laptop Code</option>
+<option value="fas fa-award" data-icon="fas fa-award">🏅 Award</option>
+<option value="fas fa-robot" data-icon="fas fa-robot">🤖 Robot</option>
+<option value="fas fa-graduation-cap" data-icon="fas fa-graduation-cap">🎓 Graduation</option>
+<option value="fas fa-database" data-icon="fas fa-database">🗄️ Database</option>
+<option value="fas fa-chart-pie" data-icon="fas fa-chart-pie">📊 Chart</option>
+<option value="fas fa-globe" data-icon="fas fa-globe">🌐 Globe</option>
+<option value="fas fa-file-code" data-icon="fas fa-file-code">📄 File Code</option>
+<option value="fas fa-hand-holding-heart" data-icon="fas fa-hand-holding-heart">❤️ Hand Heart</option>
+<option value="fas fa-scroll" data-icon="fas fa-scroll">📜 Scroll</option>
+<option value="fas fa-newspaper" data-icon="fas fa-newspaper">📰 Newspaper</option>
+<option value="fas fa-flask" data-icon="fas fa-flask">🧪 Flask</option>
+<option value="fas fa-cogs" data-icon="fas fa-cogs">⚙️ Cogs</option>
+<option value="fas fa-cloud" data-icon="fas fa-cloud">☁️ Cloud</option>
+</select>
+<div id="brIconPreview" class="icon-preview"><i class="fas fa-newspaper"></i> <span>fas fa-newspaper</span></div>
+</div>
+
+<div class="form-group">
+<label>Gambar Cover</label>
+<div class="upload-wrapper" id="brFotoWrapper">
+<i class="fas fa-camera"></i>
+<p>Klik untuk upload gambar</p>
+<img id="brFotoPreview" class="upload-preview" style="display:none;">
+<input type="file" id="brFotoInput" accept="image/*" style="display:none;">
+</div>
+</div>
+<button class="btn btn-primary" onclick="saveBerita()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalBerita')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL GENERASI ===== -->
+<div class="modal-overlay" id="modalGenerasi" onclick="if(event.target===this)closeModal('modalGenerasi')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalGenerasiTitle">Tambah Generasi</h3><button class="modal-close" onclick="closeModal('modalGenerasi')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="gnKey">
+<div class="form-group"><label>Nama Generasi</label><input type="text" id="gnTitle" placeholder="Contoh: Generasi 4"></div>
+<div class="form-group"><label>Deskripsi</label><textarea id="gnDesc" rows="3" placeholder="Deskripsi generasi..."></textarea></div>
+<button class="btn btn-primary" onclick="saveGenerasi()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalGenerasi')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL SERTIFIKASI ===== -->
+<div class="modal-overlay" id="modalSertifikasi" onclick="if(event.target===this)closeModal('modalSertifikasi')">
+<div class="modal-content" style="max-width:550px;">
+<div class="modal-header"><h3 id="modalSertifikasiTitle">Tambah Sertifikasi</h3><button class="modal-close" onclick="closeModal('modalSertifikasi')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="srIndex">
+<div class="form-group"><label>Kode Sertifikasi (Otomatis)</label><input type="text" id="srNomor" readonly style="background:#f0f2f5;color:var(--gray-500);"></div>
+<div class="form-group"><label>Nama Mahasiswa</label><input type="text" id="srNama" placeholder="Nama lengkap"></div>
+<div class="form-group"><label>NIM</label><input type="text" id="srNim" placeholder="NIM mahasiswa"></div>
+<div class="form-group"><label>Angkatan</label><input type="text" id="srAngkatan" placeholder="Contoh: 2022"></div>
+<div class="form-group"><label>Kelas</label><input type="text" id="srKelas" placeholder="Contoh: A / B / Reguler"></div>
+<div class="form-group"><label>Jenis Sertifikasi</label><input type="text" id="srJenis" placeholder="Contoh: SAP S/4HANA Associate"></div>
+
+<div class="form-group"><label>Nilai</label><input type="text" id="srNilai" placeholder="Contoh: A / B+"></div>
+<div class="form-group"><label>Status Kelayakan</label>
+<select id="srStatus">
+<option value="Belum Bisa Diambil">Belum Bisa Diambil</option>
+<option value="Sudah Bisa Diambil">Sudah Bisa Diambil</option>
+</select>
+</div>
+<div class="form-group"><label>Status Pengambilan Sertifikat</label>
+<select id="srDiambil">
+<option value="Belum Diambil">Belum Diambil</option>
+<option value="Sudah Diambil">Sudah Diambil</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>Foto / Scan Sertifikat</label>
+<div class="upload-wrapper" id="srFotoWrapper">
+<i class="fas fa-camera"></i>
+<p>Klik untuk upload foto sertifikat</p>
+<img id="srFotoPreview" class="upload-preview" style="display:none;">
+<input type="file" id="srFotoInput" accept="image/*" style="display:none;">
+</div>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Foto akan tampil pada hasil pengecekan sertifikat di halaman publik. Biarkan kosong jika tidak ingin menampilkan foto.</p>
+</div>
+
+<div class="form-group">
+<label>File PDF Sertifikat</label>
+<input type="text" id="srPdf" placeholder="Contoh: sertifikat/SAP-2026-0001.pdf atau https://...">
+<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+<input type="file" id="srPdfFile" accept="application/pdf,.pdf" onchange="handleSertifikatPdfUpload(this)" style="font-size:0.8125rem;">
+<span id="srPdfStatus" style="font-size:0.75rem;color:var(--gray-500);"></span>
+</div>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Kosongkan bila ingin memakai otomatis nama file sesuai kode sertifikat di folder <strong>sertifikat/</strong>. Tombol "Lihat Sertifikat (PDF)" hanya muncul di halaman publik jika file PDF tersedia.</p>
+</div>
+
+<button class="btn btn-primary" onclick="saveSertifikasi()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalSertifikasi')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL SETTING ===== -->
+<div class="modal-overlay" id="modalSetting" onclick="if(event.target===this)closeModal('modalSetting')">
+<div class="modal-content" style="max-width:500px;">
+<div class="modal-header"><h3 id="modalSettingTitle">Edit Subjudul Halaman</h3><button class="modal-close" onclick="closeModal('modalSetting')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<input type="hidden" id="stKey">
+<div class="form-group"><label>Subjudul Hero Section</label>
+<textarea id="stSubtitle" rows="3" placeholder="Masukkan subjudul..."></textarea>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Bisa menggunakan HTML. Contoh: Teks biasa <br> <strong>Teks tebal</strong></p>
+</div>
+<div class="form-group">
+<label><i class="fas fa-list"></i> Item Dropdown (klik untuk expand di halaman website)</label>
+<div id="dropdownItemsContainer">
+<p style="font-size:0.8125rem;color:var(--gray-400);">Belum ada item dropdown. Klik "Tambah Item" untuk menambahkan.</p>
+</div>
+<button class="btn btn-sm btn-primary-outline" onclick="addDropdownItemField()" style="margin-top:8px;"><i class="fas fa-plus"></i> Tambah Item Dropdown</button>
+</div>
+
+
+<button class="btn btn-primary" onclick="saveSetting()"><i class="fas fa-save"></i> Simpan</button>
+<button class="btn btn-secondary" onclick="closeModal('modalSetting')">Batal</button>
+</div>
+</div>
+</div>
+
+<!-- ===== MODAL GANTI PASSWORD ===== -->
+<div class="modal-overlay" id="modalGantiPassword" onclick="if(event.target===this)closeModal('modalGantiPassword')">
+<div class="modal-content" style="max-width:450px;">
+<div class="modal-header"><h3><i class="fas fa-key"></i> Ganti Password</h3><button class="modal-close" onclick="closeModal('modalGantiPassword')"><i class="fas fa-times"></i></button></div>
+<div class="modal-body">
+<p style="color:var(--gray-500);font-size:0.875rem;margin-bottom:16px;">Password Anda sudah 3 bulan belum diganti. Silakan perbarui password untuk keamanan.</p>
+<div class="form-group"><label>Password Lama</label><input type="password" id="oldPassword" placeholder="Masukkan password lama"></div>
+<div class="form-group"><label>Password Baru</label><input type="password" id="newPassword" placeholder="Masukkan password baru (min. 6 karakter)"></div>
+<div class="form-group"><label>Konfirmasi Password Baru</label><input type="password" id="confirmPassword" placeholder="Ulangi password baru"></div>
+<button class="btn btn-primary" onclick="saveNewPassword()"><i class="fas fa-save"></i> Simpan Password</button>
+<button class="btn btn-secondary" onclick="closeModal('modalGantiPassword')">Nanti Saja</button>
+</div>
+</div>
+</div>
+
+<script src="data.js"></script>
+<script>
+// ===== LOGIN CHECK (di server) + PEMUATAN DATA =====
+document.addEventListener('DOMContentLoaded', async function() {
+    // Handler upload: foto dosen/anggota/berita + PDF sertifikat
+    setupUpload('dsFotoInput', 'dsFotoPreview', 'dsFotoWrapper');
+    setupUpload('agFotoInput', 'agFotoPreview', 'agFotoWrapper');
+    setupUpload('brFotoInput', 'brFotoPreview', 'brFotoWrapper');
+    setupUpload('srFotoInput', 'srFotoPreview', 'srFotoWrapper');
+
+    const status = await apiAuthStatus();
+    let loggedIn = false;
+    let needChange = false;
+
+    if (status && status.ok === true) {
+        loggedIn = status.loggedIn === true;
+        needChange = status.needPasswordChange === true;
+        sessionStorage.setItem('erpify_admin_logged_in', loggedIn ? 'true' : 'false');
+        sessionStorage.setItem('erpify_admin_need_password_change', needChange ? 'true' : 'false');
+    } else {
+        // Backend belum tersedia: mode lokal (tanpa server)
+        loggedIn = sessionStorage.getItem('erpify_admin_logged_in') === 'true';
+        needChange = sessionStorage.getItem('erpify_admin_need_password_change') === 'true';
+    }
+
+    if (!loggedIn) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    await loadData();        // data bersama dari database
+    renderAdminContent();
+
+    if (needChange) {
+        setTimeout(function() { openModal('modalGantiPassword'); }, 500);
+    }
+});
+
+async function logoutAdmin() {
+    await apiLogout();
+    sessionStorage.removeItem('erpify_admin_logged_in');
+    sessionStorage.removeItem('erpify_admin_need_password_change');
+    window.location.href = 'login.html';
+}
+
+async function saveNewPassword() {
+    const oldPass = document.getElementById('oldPassword').value.trim();
+    const newPass = document.getElementById('newPassword').value.trim();
+    const confirmPass = document.getElementById('confirmPassword').value.trim();
+    
+    if (!oldPass || !newPass || !confirmPass) {
+        alert('Semua field harus diisi!');
+        return;
+    }
+    if (newPass.length < 6) {
+        alert('Password baru minimal 6 karakter!');
+        return;
+    }
+    if (newPass !== confirmPass) {
+        alert('Konfirmasi password tidak cocok!');
+        return;
+    }
+    
+    // Backend aktif: password disimpan sebagai hash di database server
+    if (apiIsEnabled()) {
+        const hasil = await apiChangePassword(oldPass, newPass);
+        if (hasil && hasil.ok === true) {
+            sessionStorage.setItem('erpify_admin_need_password_change', 'false');
+            closeModal('modalGantiPassword');
+            alert('Password berhasil diganti!');
+        } else {
+            alert((hasil && hasil.error) ? hasil.error : 'Gagal mengganti password.');
+        }
+        return;
+    }
+    
+    // Mode lokal (tanpa backend)
+    const data = getData();
+    if (!data.adminAccount) {
+        alert('Mode lokal tidak tersedia karena data diambil dari server. Hubungkan ulang ke server untuk mengganti password.');
+        return;
+    }
+    if (data.adminAccount.password !== oldPass) {
+        alert('Password lama salah!');
+        return;
+    }
+    
+    data.adminAccount.password = newPass;
+    data.adminAccount.lastPasswordChange = new Date().toISOString();
+    saveData(data);
+    
+    sessionStorage.setItem('erpify_admin_need_password_change', 'false');
+    closeModal('modalGantiPassword');
+    alert('Password berhasil diganti!');
+}
+
+// Setup upload handler & pemuatan data sudah ditangani pada blok
+// "LOGIN CHECK (di server) + PEMUATAN DATA" di atas.
+</script>
+</body>
+</html>

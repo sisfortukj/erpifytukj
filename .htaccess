@@ -1,0 +1,23 @@
+# ============================================================
+# ERPify - konfigurasi untuk hosting Hostinger (Apache / LiteSpeed)
+# File ini otomatis dibaca server. Tidak mengganggu website statis.
+# ============================================================
+
+# Jangan tampilkan daftar isi folder
+Options -Indexes
+
+# Encoding default
+AddDefaultCharset UTF-8
+
+# Blokir akses langsung ke file sensitif (database, backup, dokumentasi)
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(sql|sqlite|sqlite3|db|log|ini|bak|old|orig)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(sql|sqlite|sqlite3|db|log|ini|bak|old|orig)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
