@@ -1,0 +1,64 @@
+name: Deploy ERPify ke Hostinger
+
+# Workflow ini otomatis meng-upload kode ke Hostinger setiap kali Anda
+# melakukan "git push" ke branch main.
+#
+# SYARAT (sekali saja):
+# 1. hPanel > Files > FTP Accounts -> buat/lihat akun FTP, catat:
+#    host, username, password.
+# 2. GitHub repo > Settings > Secrets and variables > Actions -> New repository secret:
+#    - FTP_SERVER   (contoh: ftp.lightslategray-cat-708888.hostingersite.com atau IP server)
+#    - FTP_USERNAME (contoh: u546035153)
+#    - FTP_PASSWORD (password akun FTP)
+# 3. Sesuaikan "server-dir" di bawah:
+#    - pakai "/public_html/" bila akun FTP mengarah ke folder home
+#    - pakai "/" bila akun FTP sudah langsung mengarah ke public_html
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Upload ke Hostinger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode dari repo
+        uses: actions/checkout@v4
+
+      - name: Kirim file ke Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftp
+          local-dir: ./
+          server-dir: /public_html/
+          # File yang TIDAK dikirim, supaya data sensitif & folder server tetap aman:
+          # - api/config.php : kredensial database (hanya ada di server)
+          # - foto & PDF hasil upload admin (folders uploads/ dan sertifikat/)
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.DS_Store
+            **/api/config.php
+            **/data/**
+            **/uploads/**/*.jpg
+            **/uploads/**/*.jpeg
+            **/uploads/**/*.png
+            **/uploads/**/*.webp
+            **/uploads/**/*.gif
+            **/uploads/**/*.pdf
+            **/sertifikat/**/*.pdf
+            **/deploy/**
+            **/*.md
+            **/*.zip
+            **/test-frontend.html
+          log-level: standard
+          # false = jangan hapus file di server yang tidak ada di repo
+          # (wajib false agar config.php & uploads tidak terhapus)
+          dangerous-clean-slate: false

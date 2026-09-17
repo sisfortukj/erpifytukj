@@ -46,7 +46,58 @@ git remote add origin https://github.com/USERNAME-ANDA/erpify-lab.git
 git push -u origin main
 ```
 
-### 3.2 Pilih cara menarik kode ke Hostinger
+### 3.0 Cara termudah membuat repo GitHub: lewat VS Code
+
+1. Buka folder `ERPify` di VS Code → panel **Source Control** (ikon cabang di kiri).
+2. Klik **Publish Branch** / **Publish to GitHub** → pilih **Private** → VS Code
+   akan meminta login GitHub di browser, lalu repo dibuat **dan kode langsung ter-push**.
+3. Kalau lebih suka terminal, bisa juga:
+   ```bash
+   sh deploy/connect-github.sh https://github.com/USERNAME-ANDA/erpify-lab.git
+   ```
+
+### 3.3 Cara otomatis: setiap `git push` langsung live (paling praktis)
+
+Sudah disiapkan file workflow: `.github/workflows/deploy-hostinger.yml`.
+Setelah diset, Anda **tidak perlu** membuka hPanel lagi setiap kali update.
+
+**Sekali saja:**
+
+1. Buat akun FTP di hPanel: **Files → FTP Accounts → Create new FTP account**
+   (catat: FTP host, username, password; akun FTP bisa diarahkan ke `public_html`).
+2. Buka repository di GitHub → **Settings → Secrets and variables → Actions →
+   New repository secret**, lalu tambahkan 3 secret:
+   | Nama secret | Isi |
+   |---|---|
+   | `FTP_SERVER` | host FTP dari hPanel (mis. `ftp.domain-anda.com` atau IP server) |
+   | `FTP_USERNAME` | username FTP (mis. `u546035153`) |
+   | `FTP_PASSWORD` | password akun FTP |
+3. Sesuaikan `server-dir` di file workflow bila perlu:
+   - `/public_html/` → bila akun FTP mengarah ke folder home
+   - `/` → bila akun FTP sudah langsung di dalam `public_html`
+
+**Setiap kali update kode:**
+
+```bash
+git add -A
+git commit -m "Ubah tampilan halaman kerjasama"
+git push
+```
+
+→ GitHub Actions otomatis meng-upload kode ke Hostinger (lihat tab **Actions**).
+File `api/config.php`, folder `uploads/`, dan PDF di `sertifikat/` **tidak** akan
+tersentuh (sudah dikecualikan di workflow), dan `dangerous-clean-slate: false`
+memastikan tidak ada file di server yang dihapus.
+
+> Kalau upload FTP gagal (`Connection refused`), ganti `protocol: ftp` menjadi
+> `protocol: ftps` di workflow — sebagian akun FTP Hostinger memakai FTPS (port 21).
+
+**Ingin push ke dua tempat sekaligus** (GitHub + langsung ke server via SSH):
+```bash
+sh deploy/push-semua.sh "Update website ERPify"
+```
+
+
 
 **Cara A - fitur Git di hPanel (paling praktis, bila tersedia di plan Anda)**
 1. hPanel → cari menu **Advanced → Git** (atau **Git Version Control**).
