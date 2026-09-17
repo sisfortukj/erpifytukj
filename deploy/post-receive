@@ -1,0 +1,31 @@
+#!/bin/sh
+# ============================================================
+# ERPify - hook deploy otomatis (post-receive)
+# ------------------------------------------------------------
+# Pasang file ini di server, di dalam: ~/erpify.git/hooks/post-receive
+# lalu: chmod +x ~/erpify.git/hooks/post-receive
+#
+# Setiap kali Anda menjalankan "git push hostinger main" dari komputer,
+# file website di public_html otomatis diperbarui (kecuali file yang
+# tidak ada di repo: api/config.php, uploads/, data/ - tetap aman).
+# ============================================================
+
+TARGET="$HOME/domains/lightslategray-cat-708888.hostingersite.com/public_html"
+# Kalau nama domain Anda berubah, sesuaikan TARGET di atas.
+# Lihat nama folder domain dengan perintah:  ls ~/domains/
+
+GIT_DIR_BARE="$HOME/erpify.git"
+
+while read oldrev newrev ref
+do
+    if [ "$ref" = "refs/heads/main" ]; then
+        echo "==> Deploy ERPify ke: $TARGET"
+        if [ ! -d "$TARGET" ]; then
+            echo "!! Folder tujuan tidak ditemukan: $TARGET"
+            continue
+        fi
+        GIT_DIR="$GIT_DIR_BARE" GIT_WORK_TREE="$TARGET" git checkout -f main
+        echo "==> Selesai pada $(date '+%d-%m-%Y %H:%M:%S')"
+        echo "==> Catatan: api/config.php, uploads/, dan data/ tidak tersentuh (tidak ada di repo)."
+    fi
+done
