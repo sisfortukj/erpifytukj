@@ -27,7 +27,20 @@ jobs:
       - name: Ambil kode dari repo
         uses: actions/checkout@v4
 
+      - name: Cek apakah secrets FTP sudah diisi
+        id: cek
+        env:
+          FTP_SERVER_ISI: ${{ secrets.FTP_SERVER }}
+        run: |
+          if [ -z "$FTP_SERVER_ISI" ]; then
+            echo "siap=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secrets FTP belum diisi. Deploy dilewati - isi FTP_SERVER, FTP_USERNAME, FTP_PASSWORD di Settings > Secrets and variables > Actions."
+          else
+            echo "siap=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Kirim file ke Hostinger via FTP
+        if: steps.cek.outputs.siap == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
