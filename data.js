@@ -394,6 +394,12 @@ function generateKodeDosen() {
     return 'DSN-' + String(max + 1).padStart(2, '0');
 }
 
+// Label "Kode - Nama" mahasiswa (kode asprak melekat pada anggota)
+function anggotaLabel(a) {
+    if (!a) return '';
+    return (a.kodeAsprak ? a.kodeAsprak + ' - ' : '') + (a.nama || '');
+}
+
 // Susun <option> untuk daftar berkode (ditampilkan sebagai "Kode - Nama")
 function opsiKodeNama(daftar, kodeTerpilih, fnLabel) {
     let html = '<option value="">-- Belum dipilih --</option>';
@@ -548,7 +554,18 @@ function renderDosen() {
     const data = getData();
     const grid = document.getElementById('dosenGrid');
     if (!grid) return;
-    grid.innerHTML = data.dosen.map(d => `<div class="dosen-card fade-in"><div class="photo" style="${d.foto?'background:transparent;':''}">${d.foto?`<img src="${d.foto}" alt="${d.nama}" style="width:100%;height:100%;object-fit:cover;">`:'<i class="fas fa-user-tie"></i>'}</div><div class="info"><h4>${d.nama}</h4><div class="jabatan">${d.jabatan}</div><div class="keahlian">${d.keahlian}</div><div class="tags">${d.tags.map(t=>`<span>${t}</span>`).join('')}</div></div></div>`).join('');
+    grid.innerHTML = data.dosen.map(function(d) {
+        return '<div class="dosen-card fade-in">'
+            + '<div class="photo" style="' + (d.foto ? 'background:transparent;' : '') + '">'
+            + (d.foto ? '<img src="' + d.foto + '" alt="' + escapeHtml(d.nama) + '" style="width:100%;height:100%;object-fit:cover;">' : '<i class="fas fa-user-tie"></i>')
+            + '</div>'
+            + '<div class="info">'
+            + '<h4>' + escapeHtml(dosenLabel(d)) + '</h4>'
+            + '<div class="jabatan">' + escapeHtml(d.jabatan) + '</div>'
+            + '<div class="keahlian">' + escapeHtml(d.keahlian) + '</div>'
+            + '<div class="tags">' + (d.tags || []).map(function(t) { return '<span>' + escapeHtml(t) + '</span>'; }).join('') + '</div>'
+            + '</div></div>';
+    }).join('');
 }
 
 // ===== MITRA =====
@@ -596,17 +613,15 @@ function renderAnggota(genKey) {
     if (!grid) return;
     grid.innerHTML = gen.anggota.map(function(a) {
         const dosen = anggotaDosenLabel(a);
-        const asprak = anggotaAsprakLabel(a);
         return '<div class="anggota-card fade-in">'
             + '<div class="avatar" style="' + (a.foto ? 'background:transparent;padding:0;overflow:hidden;' : '') + '">'
-            + (a.foto ? '<img src="' + a.foto + '" alt="' + escapeHtml(a.nama) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : escapeHtml(a.nama.charAt(0)))
+            + (a.foto ? '<img src="' + a.foto + '" alt="' + escapeHtml(a.nama) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : escapeHtml((a.nama || '?').charAt(0)))
             + '</div>'
-            + '<h4>' + escapeHtml(a.nama) + '</h4>'
+            + '<h4>' + escapeHtml(anggotaLabel(a)) + '</h4>'
             + '<div class="nim">' + escapeHtml(a.nim) + '</div>'
             + '<div class="jabatan-anggota">' + escapeHtml(a.jabatan) + '</div>'
             + '<div class="divisi">' + escapeHtml(a.divisi) + '</div>'
             + (dosen ? '<div class="anggota-pembimbing"><span>Dosen</span>' + escapeHtml(dosen) + '</div>' : '')
-            + (asprak ? '<div class="anggota-pembimbing"><span>Asprak</span>' + escapeHtml(asprak) + '</div>' : '')
             + '</div>';
     }).join('');
     setTimeout(function() { document.querySelectorAll('#anggotaGrid .fade-in').forEach(function(el) { el.classList.add('visible'); }); }, 100);
@@ -817,10 +832,9 @@ function getSertifikatPdfUrl(sertifikat) {
 }
 
 
-// Upload PDF dari panel admin
-function handleSertifikatPdfUpload(input) {
-    const status = document.getElementById('srPdfStatus');
-    const pdfInput = document.getElementById('srPdf');
+// Unggah PDF sertifikat untuk satu baris pada form sertifikasi
+function handleSertifikatPdfUploadRow(input) {
+    const baris = input.closest ? input.closest('.sertif-row') : null;
     const file = input.files && input.files[0];
     if (!file) return;
     if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
@@ -828,23 +842,26 @@ function handleSertifikatPdfUpload(input) {
         input.value = '';
         return;
     }
-    if (typeof uploadFileToApi === 'function' && typeof apiIsEnabled === 'function' && apiIsEnabled()) {
-        if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
-        uploadFileToApi(file, 'sertifikat').then(function(res) {
-            if (res && res.url) {
-                if (pdfInput) pdfInput.value = res.url;
-                if (status) status.innerHTML = '<i class="fas fa-check-circle" style="color:#16a34a;"></i> Terunggah: ' + (res.fileName || res.url);
-            } else {
-                if (status) status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah.';
-            }
-        }).catch(function() {
-            if (status) status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah (server tidak merespons).';
-        });
+    const status = baris ? baris.querySelector('.row-pdf-status') : null;
+    const target = baris ? baris.querySelector('.row-pdf') : null;
+
+    if (!(typeof uploadFileToApi === 'function' && apiIsEnabled())) {
+        if (status) status.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#d97706;"></i> Backend belum aktif - PDF belum dapat diunggah.';
+        input.value = '';
         return;
     }
-    // Tanpa backend: file tidak bisa disimpan permanen, arahkan upload manual
-    if (status) status.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#d97706;"></i> Backend belum aktif. Upload file <strong>' + file.name + '</strong> lewat File Manager Hostinger ke folder <strong>sertifikat/</strong>, lalu isi kolom di atas dengan <strong>sertifikat/' + file.name + '</strong>.';
-    input.value = '';
+
+    if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengunggah...';
+    uploadFileToApi(file, 'sertifikat').then(function(res) {
+        if (res && res.url) {
+            if (target) target.value = res.url;
+            if (status) status.innerHTML = '<i class="fas fa-check-circle" style="color:#16a34a;"></i> Terunggah: ' + (res.fileName || res.url);
+        } else if (status) {
+            status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah.';
+        }
+    }).catch(function() {
+        if (status) status.innerHTML = '<i class="fas fa-times-circle" style="color:#dc2626;"></i> Gagal mengunggah (server tidak merespons).';
+    });
 }
 
 
@@ -1409,7 +1426,7 @@ function renderAdminAnggotaList() {
     if (!gen) return;
     const list = document.getElementById('adminAnggotaList');
     if (!list) return;
-    list.innerHTML = gen.anggota.map((a, i) => '<div class="admin-item" style="margin-bottom:8px;"><div style="width:36px;height:36px;border-radius:50%;background:'+(a.foto?'transparent':'linear-gradient(135deg,var(--blue),var(--navy))')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;overflow:hidden;">'+(a.foto?'<img src="'+a.foto+'" style="width:100%;height:100%;object-fit:cover;">':escapeHtml(a.nama.charAt(0)))+'</div><div class="info"><strong>'+escapeHtml(a.nama)+'</strong> ('+escapeHtml(a.nim)+')<br><small>'+escapeHtml(a.jabatan)+' - '+escapeHtml(a.divisi)+(anggotaDosenLabel(a)?' | Dosen: '+escapeHtml(anggotaDosenLabel(a)):'')+(anggotaAsprakLabel(a)?' | Asprak: '+escapeHtml(anggotaAsprakLabel(a)):'')+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAnggota(\''+genKey+'\','+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteAnggota(\''+genKey+'\','+i+')"><i class="fas fa-trash"></i></button></div></div>').join('');
+    list.innerHTML = gen.anggota.map((a, i) => '<div class="admin-item" style="margin-bottom:8px;"><div style="width:36px;height:36px;border-radius:50%;background:'+(a.foto?'transparent':'linear-gradient(135deg,var(--blue),var(--navy))')+';color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.875rem;overflow:hidden;">'+(a.foto?'<img src="'+a.foto+'" style="width:100%;height:100%;object-fit:cover;">':escapeHtml((a.nama||'?').charAt(0)))+'</div><div class="info"><strong>'+escapeHtml(anggotaLabel(a))+'</strong> ('+escapeHtml(a.nim)+')<br><small>'+escapeHtml(a.jabatan)+' - '+escapeHtml(a.divisi)+(anggotaDosenLabel(a)?' | Dosen: '+escapeHtml(anggotaDosenLabel(a)):'')+'</small></div><div class="actions"><button class="btn btn-sm btn-warning" onclick="showModalAnggota(\''+genKey+'\','+i+')"><i class="fas fa-pen"></i></button><button class="btn btn-sm btn-danger" onclick="deleteAnggota(\''+genKey+'\','+i+')"><i class="fas fa-trash"></i></button></div></div>').join('');
 }
 
 function showModalAnggota(genKey, index) {
@@ -1674,29 +1691,15 @@ function renderAdminSertifikasi() {
     if (filterDiambil) filtered = filtered.filter(s => (s.diambil || 'Belum Diambil') === filterDiambil);
     if (filterAngkatan) filtered = filtered.filter(s => s.angkatan === filterAngkatan);
 
-    // Kelompokkan data per mahasiswa (berdasarkan NIM)
-    const mahasiswa = [];
-    const peta = {};
-    filtered.forEach(function(s) {
-        const kunci = normalizeNim(s.nim) || ('tanpa-nim-' + (s.nama || ''));
-        if (!peta[kunci]) {
-            peta[kunci] = { nim: s.nim || '-', nama: s.nama || '-', angkatan: s.angkatan || '', kelas: s.kelas || '', daftar: [] };
-            mahasiswa.push(peta[kunci]);
-        }
-        const grp = peta[kunci];
-        if (grp.nama === '-' && s.nama) grp.nama = s.nama;
-        if (!grp.angkatan && s.angkatan) grp.angkatan = s.angkatan;
-        if (!grp.kelas && s.kelas) grp.kelas = s.kelas;
-        grp.daftar.push(s);
-    });
+    const jumlahMahasiswa = [...new Set(filtered.map(s => normalizeNim(s.nim)))].length;
 
     container.innerHTML = '<div class="table-actions">'
-        + '<button class="btn btn-success btn-sm" onclick="showModalSertifikasi()"><i class="fas fa-plus"></i> Tambah Data Sertifikasi</button>'
+        + '<button class="btn btn-success btn-sm" onclick="showModalSertifikasi()"><i class="fas fa-plus"></i> Tambah Sertifikasi</button>'
         + '<button class="btn btn-primary btn-sm" onclick="showImportModal()"><i class="fas fa-file-import"></i> Import CSV</button>'
         + '<button class="btn btn-warning btn-sm" onclick="exportSertifikatCSV()"><i class="fas fa-file-export"></i> Export CSV</button>'
         + '<button class="btn btn-success btn-sm" onclick="exportSertifikatExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>'
         + '<span style="margin-left:auto;font-size:0.8125rem;color:var(--gray-400);">'
-        + mahasiswa.length + ' mahasiswa &middot; ' + filtered.length + ' sertifikat</span></div>'
+        + filtered.length + ' sertifikat &middot; ' + jumlahMahasiswa + ' mahasiswa</span></div>'
 
         + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;background:var(--white);padding:16px;border-radius:12px;border:1px solid var(--gray-200);">'
         + '<div style="flex:1;min-width:200px;position:relative;">'
@@ -1719,42 +1722,31 @@ function renderAdminSertifikasi() {
         + '</select>'
         + '<button class="btn btn-sm btn-secondary" onclick="resetFilterSertifikat()"><i class="fas fa-undo"></i> Reset</button>'
         + '</div>'
-        // ===== DAFTAR MAHASISWA + SERTIFIKATNYA =====
-        + '<div class="sertif-admin-list">'
-        + mahasiswa.map(function(m) {
-            const nimAman = escapeHtml(m.nim).replace(/'/g, '&#39;');
-            return '<div class="sertif-admin-card">'
-                + '<div class="sertif-admin-head">'
-                + '<div class="sertif-admin-info">'
-                + '<strong><i class="fas fa-user-graduate"></i> ' + escapeHtml(m.nim) + ' - ' + escapeHtml(m.nama) + '</strong>'
-                + '<small>' + (m.angkatan ? 'Angkatan ' + escapeHtml(m.angkatan) : 'Angkatan -')
-                + (m.kelas ? ' &middot; Kelas ' + escapeHtml(m.kelas) : '')
-                + ' &middot; ' + m.daftar.length + ' sertifikat</small>'
-                + '</div>'
-                + '<button class="btn btn-success btn-sm" onclick="showModalSertifikasi(\'\', \'' + nimAman + '\')" title="Tambah sertifikat untuk NIM ini"><i class="fas fa-plus"></i> Tambah Sertifikat</button>'
-                + '</div>'
-                + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
-                + '<th>Nama Sertifikat</th><th>Nilai</th><th>Status Kelayakan</th><th>Status Pengambilan</th><th>File PDF</th><th>Aksi</th>'
-                + '</tr></thead><tbody>'
-                + m.daftar.map(function(s) {
-                    const idx = data.sertifikatSAP.indexOf(s);
-                    const pdfUrl = getSertifikatPdfUrl(s);
-                    return '<tr>'
-                        + '<td><strong>' + escapeHtml(s.jenis || '-') + '</strong></td>'
-                        + '<td>' + escapeHtml(s.nilai || '-') + '</td>'
-                        + '<td><span class="status-badge ' + (s.status === 'Sudah Bisa Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.status || '-') + '</span></td>'
-                        + '<td><span class="status-badge ' + (s.diambil === 'Sudah Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.diambil || 'Belum Diambil') + '</span></td>'
-                        + '<td>' + (pdfUrl ? '<a href="' + pdfUrl + '" target="_blank" rel="noopener" title="Buka file PDF"><i class="fas fa-file-pdf" style="color:#dc2626;font-size:1.1rem;"></i></a>' : '<span style="color:var(--gray-400);font-size:0.75rem;">belum ada</span>') + '</td>'
-                        + '<td style="white-space:nowrap;">'
-                        + '<button class="btn btn-sm btn-warning" onclick="showModalSertifikasi(' + idx + ')" title="Edit"><i class="fas fa-pen"></i></button> '
-                        + '<button class="btn btn-sm btn-danger" onclick="deleteSertifikasi(' + idx + ')" title="Hapus"><i class="fas fa-trash"></i></button>'
-                        + '</td></tr>';
-                }).join('')
-                + '</tbody></table></div>'
-                + '</div>';
+
+        + '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>'
+        + '<th>NIM</th><th>Nama Mahasiswa</th><th>Angkatan</th><th>Kelas</th><th>Nama Sertifikat</th><th>Nilai</th>'
+        + '<th>Status Kelayakan</th><th>Status Pengambilan</th><th>PDF</th><th>Aksi</th>'
+        + '</tr></thead><tbody>'
+        + filtered.map(function(s) {
+            const idx = semua.indexOf(s);
+            const pdfUrl = getSertifikatPdfUrl(s);
+            return '<tr>'
+                + '<td><strong>' + escapeHtml(s.nim || '-') + '</strong></td>'
+                + '<td>' + escapeHtml(s.nama || '-') + '</td>'
+                + '<td>' + escapeHtml(s.angkatan || '-') + '</td>'
+                + '<td>' + escapeHtml(s.kelas || '-') + '</td>'
+                + '<td>' + escapeHtml(s.jenis || '-') + '</td>'
+                + '<td>' + escapeHtml(s.nilai || '-') + '</td>'
+                + '<td><span class="status-badge ' + (s.status === 'Sudah Bisa Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.status || '-') + '</span></td>'
+                + '<td><span class="status-badge ' + (s.diambil === 'Sudah Diambil' ? 'success' : 'warning') + '">' + escapeHtml(s.diambil || 'Belum Diambil') + '</span></td>'
+                + '<td>' + (pdfUrl ? '<a href="' + pdfUrl + '" target="_blank" rel="noopener" title="Buka file PDF"><i class="fas fa-file-pdf" style="color:#dc2626;font-size:1.1rem;"></i></a>' : '<span style="color:var(--gray-400);font-size:0.75rem;">belum ada</span>') + '</td>'
+                + '<td style="white-space:nowrap;">'
+                + '<button class="btn btn-sm btn-warning" onclick="showModalSertifikasi(' + idx + ')" title="Edit"><i class="fas fa-pen"></i></button> '
+                + '<button class="btn btn-sm btn-danger" onclick="deleteSertifikasi(' + idx + ')" title="Hapus"><i class="fas fa-trash"></i></button>'
+                + '</td></tr>';
         }).join('')
-        + '</div>'
-        + (mahasiswa.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;"></i>Belum ada data sertifikasi yang cocok.</div>' : '');
+        + '</tbody></table></div>'
+        + (filtered.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-search" style="font-size:2rem;margin-bottom:12px;display:block;"></i>Belum ada data sertifikasi yang cocok.</div>' : '');
 }
 
 function filterSertifikatTable() {
@@ -1779,57 +1771,121 @@ function resetFilterSertifikat() {
     renderAdminSertifikasi();
 }
 
+// Nomor urut baris sertifikat pada form (untuk label "Sertifikat #n")
+let barisSertifKe = 0;
+
 // Buka form sertifikasi.
 //   - index : index data yang mau diedit (kosongkan untuk data baru)
-//   - nimPreset : kalau diisi, form otomatis terisi data mahasiswa NIM tersebut
-//     (dipakai tombol "Tambah Sertifikat" pada kartu mahasiswa)
-function showModalSertifikasi(index, nimPreset) {
+// Form ini bisa memuat BEBERAPA sertifikat sekaligus untuk satu mahasiswa.
+function showModalSertifikasi(index) {
     const data = getData();
     const punyaIndex = (index !== undefined && index !== null && index !== '' && index >= 0);
     const s = punyaIndex ? data.sertifikatSAP[index] : null;
 
-    let nim = s ? (s.nim || '') : (nimPreset || '');
-    let nama = s ? (s.nama || '') : '';
-    let angkatan = s ? (s.angkatan || '') : '';
-    let kelas = s ? (s.kelas || '') : '';
-
-    // Ambil identitas mahasiswa dari sertifikat lain dengan NIM yang sama
-    if (!s && nimPreset) {
-        const lain = data.sertifikatSAP.find(x => normalizeNim(x.nim) === normalizeNim(nimPreset));
-        if (lain) {
-            nim = lain.nim || nim;
-            nama = lain.nama || '';
-            angkatan = lain.angkatan || '';
-            kelas = lain.kelas || '';
-        }
-    }
-
-    document.getElementById('modalSertifikasiTitle').textContent = s
-        ? 'Edit Sertifikat'
-        : (nimPreset ? 'Tambah Sertifikat - NIM ' + nim : 'Tambah Data Sertifikasi');
+    document.getElementById('modalSertifikasiTitle').textContent = s ? 'Edit Sertifikat' : 'Tambah Data Sertifikasi';
     document.getElementById('srIndex').value = punyaIndex ? index : '';
-    document.getElementById('srNim').value = nim;
-    document.getElementById('srNama').value = nama;
-    document.getElementById('srAngkatan').value = angkatan;
-    document.getElementById('srKelas').value = kelas;
-    document.getElementById('srJenis').value = s ? (s.jenis || '') : '';
-    document.getElementById('srNilai').value = s ? (s.nilai || '') : '';
-    document.getElementById('srStatus').value = s ? (s.status || 'Belum Bisa Diambil') : 'Belum Bisa Diambil';
-    document.getElementById('srDiambil').value = s ? (s.diambil || 'Belum Diambil') : 'Belum Diambil';
+    document.getElementById('srNim').value = s ? (s.nim || '') : '';
+    document.getElementById('srNama').value = s ? (s.nama || '') : '';
+    document.getElementById('srAngkatan').value = s ? (s.angkatan || '') : '';
+    document.getElementById('srKelas').value = s ? (s.kelas || '') : '';
 
-    // File PDF sertifikat
-    const pdfField = document.getElementById('srPdf');
-    if (pdfField) pdfField.value = s ? (s.pdf || '') : '';
-    const pdfFileField = document.getElementById('srPdfFile');
-    if (pdfFileField) pdfFileField.value = '';
-    const pdfStatusField = document.getElementById('srPdfStatus');
-    if (pdfStatusField) pdfStatusField.innerHTML = '';
+    const kontainer = document.getElementById('sertifRows');
+    if (kontainer) kontainer.innerHTML = '';
+    barisSertifKe = 0;
+    tambahBarisSertifikat(s || null);
 
     openModal('modalSertifikasi');
 }
 
-// Simpan data sertifikasi. NIM + Nama Sertifikat adalah acuan utama,
-// sehingga satu NIM boleh punya banyak sertifikat.
+// Tambah satu baris sertifikat pada form (bisa dipanggil berkali-kali)
+function tambahBarisSertifikat(d) {
+    const kontainer = document.getElementById('sertifRows');
+    if (!kontainer) return;
+    barisSertifKe++;
+
+    const row = document.createElement('div');
+    row.className = 'sertif-row';
+    row.innerHTML = '<div class="sertif-row-head">'
+        + '<strong><i class="fas fa-certificate"></i> Sertifikat #' + barisSertifKe + '</strong>'
+        + '<button type="button" class="btn btn-sm btn-danger" onclick="hapusBarisSertifikat(this)" title="Hapus baris ini"><i class="fas fa-times"></i></button>'
+        + '</div>'
+        + '<div class="form-group"><label>Nama Sertifikat <span style="color:red;">*</span></label>'
+        + '<input type="text" class="row-jenis" placeholder="Contoh: SAP S/4HANA Associate / SAP MM Associate" value="' + (d ? escapeHtml(d.jenis || '') : '') + '"></div>'
+        + '<div class="sertif-row-grid">'
+        + '<div class="form-group"><label>Nilai</label><input type="text" class="row-nilai" placeholder="A / B+" value="' + (d ? escapeHtml(d.nilai || '') : '') + '"></div>'
+        + '<div class="form-group"><label>Status Kelayakan</label><select class="row-status">'
+        + '<option value="Belum Bisa Diambil"' + (d && d.status === 'Belum Bisa Diambil' ? ' selected' : '') + '>Belum Bisa Diambil</option>'
+        + '<option value="Sudah Bisa Diambil"' + (d && d.status === 'Sudah Bisa Diambil' ? ' selected' : '') + '>Sudah Bisa Diambil</option>'
+        + '</select></div>'
+        + '<div class="form-group"><label>Status Pengambilan</label><select class="row-diambil">'
+        + '<option value="Belum Diambil"' + (d && d.diambil === 'Belum Diambil' ? ' selected' : '') + '>Belum Diambil</option>'
+        + '<option value="Sudah Diambil"' + (d && d.diambil === 'Sudah Diambil' ? ' selected' : '') + '>Sudah Diambil</option>'
+        + '</select></div>'
+        + '</div>'
+        + '<div class="form-group"><label>File PDF Sertifikat</label>'
+        + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'
+        + '<input type="file" class="row-pdf-file" accept="application/pdf,.pdf" onchange="handleSertifikatPdfUploadRow(this)" style="font-size:0.8125rem;">'
+        + '<span class="row-pdf-status" style="font-size:0.75rem;color:var(--gray-500);"></span>'
+        + '</div>'
+        + '<input type="hidden" class="row-pdf" value="' + (d ? escapeHtml(d.pdf || '') : '') + '">'
+        + '</div>';
+
+    kontainer.appendChild(row);
+}
+
+// Hapus satu baris sertifikat (minimal harus ada satu baris)
+function hapusBarisSertifikat(btn) {
+    const row = btn.closest ? btn.closest('.sertif-row') : btn.parentElement.parentElement;
+    const kontainer = document.getElementById('sertifRows');
+    if (!row || !kontainer) return;
+    if (kontainer.querySelectorAll('.sertif-row').length <= 1) {
+        alert('Minimal harus ada satu sertifikat pada form ini.');
+        return;
+    }
+    row.remove();
+}
+
+// Kumpulkan data dari semua baris sertifikat pada form
+function bacaBarisSertifikat() {
+    const kontainer = document.getElementById('sertifRows');
+    if (!kontainer) return [];
+    const hasil = [];
+    kontainer.querySelectorAll('.sertif-row').forEach(function(b) {
+        const elJenis = b.querySelector('.row-jenis');
+        const elNilai = b.querySelector('.row-nilai');
+        const elStatus = b.querySelector('.row-status');
+        const elDiambil = b.querySelector('.row-diambil');
+        const elPdf = b.querySelector('.row-pdf');
+        hasil.push({
+            jenis: elJenis ? String(elJenis.value).trim() : '',
+            nilai: elNilai ? String(elNilai.value).trim() : '',
+            status: elStatus ? elStatus.value : 'Belum Bisa Diambil',
+            diambil: elDiambil ? elDiambil.value : 'Belum Diambil',
+            pdf: elPdf ? String(elPdf.value).trim() : ''
+        });
+    });
+    return hasil;
+}
+
+// Isi otomatis identitas mahasiswa bila NIM sudah pernah terdaftar
+function autofillIdentitasMahasiswa() {
+    const elNim = document.getElementById('srNim');
+    const elNama = document.getElementById('srNama');
+    const elAngkatan = document.getElementById('srAngkatan');
+    const elKelas = document.getElementById('srKelas');
+    if (!elNim) return;
+    const nim = String(elNim.value).trim();
+    if (!nim) return;
+    const data = getData();
+    const sama = (data.sertifikatSAP || []).find(function(x) { return normalizeNim(x.nim) === normalizeNim(nim); });
+    if (!sama) return;
+    if (elNama && !String(elNama.value).trim()) elNama.value = sama.nama || '';
+    if (elAngkatan && !String(elAngkatan.value).trim()) elAngkatan.value = sama.angkatan || '';
+    if (elKelas && !String(elKelas.value).trim()) elKelas.value = sama.kelas || '';
+}
+
+// Simpan sertifikasi. NIM + Nama Mahasiswa diisi sekali, lalu satu atau
+// beberapa sertifikat sekaligus (nama, nilai, status, status pengambilan, PDF).
 function saveSertifikasi() {
     const data = getData();
     const index = document.getElementById('srIndex').value;
@@ -1837,51 +1893,42 @@ function saveSertifikasi() {
     const nama = document.getElementById('srNama').value.trim();
     const angkatan = document.getElementById('srAngkatan').value.trim();
     const kelas = document.getElementById('srKelas').value.trim();
-    const jenis = document.getElementById('srJenis').value.trim();
-    const nilai = document.getElementById('srNilai').value.trim();
-    const status = document.getElementById('srStatus').value;
-    const diambil = document.getElementById('srDiambil').value;
 
     if (!nim) { alert('NIM harus diisi - NIM adalah acuan utama pencarian sertifikat.'); return; }
     if (!nama) { alert('Nama mahasiswa harus diisi!'); return; }
-    if (!jenis) { alert('Nama sertifikat harus diisi!'); return; }
 
-    const pdfField = document.getElementById('srPdf');
-    const pdf = pdfField ? pdfField.value.trim() : '';
+    const baris = bacaBarisSertifikat().filter(function(b) { return b.jenis !== ''; });
+    if (baris.length === 0) { alert('Isi minimal satu Nama Sertifikat.'); return; }
 
     if (!Array.isArray(data.sertifikatSAP)) data.sertifikatSAP = [];
 
+    const buatRecord = function(b) {
+        return {
+            nim: nim, nama: nama, angkatan: angkatan, kelas: kelas,
+            jenis: b.jenis, nilai: b.nilai, status: b.status, diambil: b.diambil, pdf: b.pdf
+        };
+    };
+
     if (index !== '') {
+        // Mode edit: baris pertama memperbarui sertifikat terpilih,
+        // baris tambahan (bila ada) menjadi sertifikat baru untuk NIM yang sama.
         const s = data.sertifikatSAP[parseInt(index)];
         if (s) {
-            s.nim = nim;
-            s.nama = nama;
-            s.angkatan = angkatan;
-            s.kelas = kelas;
-            s.jenis = jenis;
-            s.nilai = nilai;
-            s.status = status;
-            s.diambil = diambil;
-            s.pdf = pdf;
+            const b = baris[0];
+            s.nim = nim; s.nama = nama; s.angkatan = angkatan; s.kelas = kelas;
+            s.jenis = b.jenis; s.nilai = b.nilai; s.status = b.status; s.diambil = b.diambil; s.pdf = b.pdf;
+        }
+        for (let i = 1; i < baris.length; i++) {
+            data.sertifikatSAP.push(buatRecord(baris[i]));
         }
     } else {
-        data.sertifikatSAP.push({
-            nim: nim,
-            nama: nama,
-            angkatan: angkatan,
-            kelas: kelas,
-            jenis: jenis,
-            nilai: nilai,
-            status: status,
-            diambil: diambil,
-            pdf: pdf
-        });
+        baris.forEach(function(b) { data.sertifikatSAP.push(buatRecord(b)); });
     }
 
     saveData(data);
     closeModal('modalSertifikasi');
     renderAdminContent();
-    erpifyToast('Data sertifikasi berhasil disimpan.', 'success');
+    erpifyToast(baris.length + ' sertifikat berhasil disimpan.', 'success');
 }
 
 function deleteSertifikasi(index) {

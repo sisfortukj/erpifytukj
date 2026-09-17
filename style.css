@@ -459,3 +459,12 @@ body{font-family:'Inter',sans-serif;color:var(--gray-800);background:var(--white
 .crop-area canvas:active{cursor:grabbing}
 .crop-controls{display:flex;align-items:center;gap:12px;margin-top:14px;color:var(--gray-400)}
 .crop-controls input[type=range]{flex:1}
+
+/* ===== FORM SERTIFIKASI: BARIS SERTIFIKAT (bisa banyak) ===== */
+.sertif-row{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.sertif-row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed var(--gray-200)}
+.sertif-row-head strong{font-size:0.875rem;color:var(--navy)}
+.sertif-row .form-group{margin-bottom:10px}
+.sertif-row .form-group:last-child{margin-bottom:0}
+.sertif-row-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:640px){.sertif-row-grid{grid-template-columns:1fr}}

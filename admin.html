@@ -291,37 +291,16 @@ body { background: var(--admin-bg); }
 <div class="modal-header"><h3 id="modalSertifikasiTitle">Tambah Sertifikasi</h3><button class="modal-close" onclick="closeModal('modalSertifikasi')"><i class="fas fa-times"></i></button></div>
 <div class="modal-body">
 <input type="hidden" id="srIndex">
-<div class="form-group"><label>NIM <span style="color:red;">*</span></label><input type="text" id="srNim" placeholder="NIM mahasiswa (acuan utama)">
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> Satu NIM boleh punya banyak sertifikat - tambahkan lagi lewat tombol <strong>Tambah Sertifikat</strong> pada kartu mahasiswa.</p>
+<div class="form-group"><label>NIM <span style="color:red;">*</span></label><input type="text" id="srNim" placeholder="NIM mahasiswa (acuan utama)" oninput="autofillIdentitasMahasiswa()">
+<p style="font-size:0.75rem;color:var(--gray-400);margin-top:4px;"><i class="fas fa-info-circle"></i> NIM adalah acuan utama. Bila NIM sudah pernah terdaftar, nama/angkatan/kelas akan terisi otomatis.</p>
 </div>
 <div class="form-group"><label>Nama Mahasiswa <span style="color:red;">*</span></label><input type="text" id="srNama" placeholder="Nama lengkap"></div>
 <div class="form-group"><label>Angkatan</label><input type="text" id="srAngkatan" placeholder="Contoh: 2022"></div>
 <div class="form-group"><label>Kelas</label><input type="text" id="srKelas" placeholder="Contoh: A / B / Reguler"></div>
-<div class="form-group"><label>Nama Sertifikat <span style="color:red;">*</span></label><input type="text" id="srJenis" placeholder="Contoh: SAP S/4HANA Associate / SAP MM Associate"></div>
-
-<div class="form-group"><label>Nilai</label><input type="text" id="srNilai" placeholder="Contoh: A / B+"></div>
-<div class="form-group"><label>Status Kelayakan</label>
-<select id="srStatus">
-<option value="Belum Bisa Diambil">Belum Bisa Diambil</option>
-<option value="Sudah Bisa Diambil">Sudah Bisa Diambil</option>
-</select>
-</div>
-<div class="form-group"><label>Status Pengambilan Sertifikat</label>
-<select id="srDiambil">
-<option value="Belum Diambil">Belum Diambil</option>
-<option value="Sudah Diambil">Sudah Diambil</option>
-</select>
-</div>
-
-<div class="form-group">
-<label>File PDF Sertifikat</label>
-<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;">
-<input type="file" id="srPdfFile" accept="application/pdf,.pdf" onchange="handleSertifikatPdfUpload(this)" style="font-size:0.8125rem;">
-<span id="srPdfStatus" style="font-size:0.75rem;color:var(--gray-500);"></span>
-</div>
-<input type="hidden" id="srPdf">
-<p style="font-size:0.75rem;color:var(--gray-400);margin-top:6px;"><i class="fas fa-info-circle"></i> Unggah PDF sertifikatnya di sini. Tombol <strong>Lihat</strong> &amp; <strong>Unduh Sertifikat</strong> di halaman publik hanya muncul jika file PDF ini tersedia.</p>
-</div>
+<div style="margin:8px 0 4px;font-weight:600;color:var(--navy);font-size:0.9375rem;"><i class="fas fa-certificate"></i> Daftar Sertifikat</div>
+<p style="font-size:0.75rem;color:var(--gray-400);margin-bottom:10px;">Anda bisa menambahkan lebih dari satu sertifikat dalam satu kali simpan (nama sertifikat, nilai, status, dan PDF dapat berbeda).</p>
+<div id="sertifRows"></div>
+<button type="button" class="btn btn-sm btn-primary-outline" onclick="tambahBarisSertifikat()" style="margin-bottom:18px;"><i class="fas fa-plus"></i> Tambah Sertifikat Lagi</button>
 
 <button class="btn btn-primary" onclick="saveSertifikasi()"><i class="fas fa-save"></i> Simpan</button>
 <button class="btn btn-secondary" onclick="closeModal('modalSertifikasi')">Batal</button>
